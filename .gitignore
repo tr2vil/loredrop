@@ -1,0 +1,8 @@
+.env
+output/scripts/*
+output/audio/*
+output/videos/*
+!output/.gitkeep
+__pycache__/
+*.pyc
+.venv/
