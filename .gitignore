@@ -6,3 +6,5 @@ output/videos/*
 __pycache__/
 *.pyc
 .venv/
+idea/
+.claude/settings.local.json
