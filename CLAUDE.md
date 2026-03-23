@@ -32,6 +32,35 @@ docker volume rm n8n_data     # n8n 볼륨 직접 삭제
 
 모든 스킬은 `-v` 플래그 사용을 금지하여 볼륨 삭제를 방지한다.
 
+## ngrok (HTTPS 터널)
+
+Telegram Webhook은 HTTPS URL이 필수이므로, 로컬 개발 환경에서는 ngrok으로 터널링한다.
+
+### 설치 경로
+`C:\Users\admin\AppData\Local\ngrok\ngrok.exe`
+
+### 실행
+```bash
+ngrok http 5678
+```
+
+### 고정 도메인 사용 (URL 변경 방지)
+```bash
+ngrok http 5678 --domain=<your-domain>.ngrok-free.dev
+```
+고정 도메인은 https://dashboard.ngrok.com/domains 에서 확인.
+
+### ngrok 실행 후 필수 작업
+1. 터미널에 표시된 `https://xxxx.ngrok-free.app` URL 복사
+2. `docker-compose.yml`의 `WEBHOOK_URL`을 해당 URL로 변경
+3. `docker-compose up -d n8n` 으로 n8n 재시작 (볼륨 유지됨, 워크플로우 안전)
+
+### 주의사항
+- ngrok 종료 시 터널 URL이 무효화되어 Telegram Webhook이 작동하지 않음
+- 무료 플랜: 재시작마다 URL 변경 (고정 도메인 1개 무료 제공)
+- n8n 작업 중에는 ngrok을 항상 실행 상태로 유지할 것
+
 ## 서비스 접속
 - App: http://localhost:8000
 - n8n: http://localhost:5678
+- ngrok 대시보드: http://localhost:4040
