@@ -7,7 +7,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0">Manage prompt templates used for AI content generation.</p>
+    <p class="text-muted mb-0">Manage system/user prompt pairs for each pipeline step.</p>
     <button class="btn btn-primary" id="btn-new-prompt">
         <i class="bi bi-plus-lg me-1"></i> New Prompt
     </button>
@@ -21,27 +21,57 @@
 
 <!-- Prompt editor modal -->
 <div class="modal fade" id="promptEditorModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="prompt-editor-title">Edit Prompt</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Name</label>
-                    <input type="text" class="form-control" id="prompt-name" placeholder="e.g., topic_generation">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Name</label>
+                        <input type="text" class="form-control" id="prompt-name" placeholder="e.g., topic_generation">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Pipeline Step</label>
+                        <select class="form-select" id="prompt-step">
+                            <option value="">-- Select --</option>
+                            <option value="topic_generation">Topic Generation (주제 추천)</option>
+                            <option value="script_generation">Script Generation (대본 생성)</option>
+                            <option value="scene_direction">Scene Direction (장면 묘사)</option>
+                            <option value="tts">TTS (음성 생성)</option>
+                            <option value="image_generation">Image Generation (이미지 생성)</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Description</label>
+                        <input type="text" class="form-control" id="prompt-description" placeholder="What this prompt does">
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Description</label>
-                    <input type="text" class="form-control" id="prompt-description" placeholder="What this prompt does">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-cpu me-1"></i>System Prompt
+                            <small class="text-muted fw-normal ms-1">AI의 역할/페르소나 설정</small>
+                        </label>
+                        <textarea class="form-control prompt-editor" id="prompt-system" rows="16"
+                                  placeholder="You are a YouTube content strategist..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-person me-1"></i>User Prompt
+                            <small class="text-muted fw-normal ms-1">실제 요청 내용</small>
+                        </label>
+                        <textarea class="form-control prompt-editor" id="prompt-user" rows="16"
+                                  placeholder="오늘의 영상 주제 3개를 추천해줘..."></textarea>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Template</label>
-                    <textarea class="form-control prompt-editor" id="prompt-template" rows="12"
-                              placeholder="Enter your prompt template here..."></textarea>
-                    <small class="text-muted">Use {variable_name} for dynamic variables.</small>
-                </div>
+                <small class="text-muted mt-2 d-block">
+                    <i class="bi bi-info-circle me-1"></i>
+                    동적 변수: <code>{count}</code> <code>{existing_topics}</code> <code>{topic}</code> <code>{paragraph}</code> 등을 사용할 수 있습니다.
+                </small>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-danger me-auto" id="btn-delete-prompt" style="display:none;">

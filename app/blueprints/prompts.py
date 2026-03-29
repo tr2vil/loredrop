@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from flask import Blueprint, render_template, jsonify, request
 from ..extensions import redis_client
@@ -40,11 +39,14 @@ def create_prompt():
     if redis_client.sismember('prompt:list', name):
         return jsonify({'error': 'Prompt already exists'}), 409
 
-    redis_client.hset(f'prompt:{name}', mapping={
-        'template': data.get('template', ''),
+    mapping = {
+        'system_prompt': data.get('system_prompt', ''),
+        'user_prompt': data.get('user_prompt', ''),
         'description': data.get('description', ''),
+        'step': data.get('step', ''),
         'updated_at': datetime.utcnow().isoformat(),
-    })
+    }
+    redis_client.hset(f'prompt:{name}', mapping=mapping)
     redis_client.sadd('prompt:list', name)
     return jsonify({'ok': True}), 201
 
@@ -54,11 +56,14 @@ def update_prompt(name):
     if not redis_client.sismember('prompt:list', name):
         return jsonify({'error': 'Prompt not found'}), 404
     data = request.get_json()
-    redis_client.hset(f'prompt:{name}', mapping={
-        'template': data.get('template', ''),
+    mapping = {
+        'system_prompt': data.get('system_prompt', ''),
+        'user_prompt': data.get('user_prompt', ''),
         'description': data.get('description', ''),
+        'step': data.get('step', ''),
         'updated_at': datetime.utcnow().isoformat(),
-    })
+    }
+    redis_client.hset(f'prompt:{name}', mapping=mapping)
     return jsonify({'ok': True})
 
 
