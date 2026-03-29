@@ -1,100 +1,104 @@
 # LoreDrop
 
-역사/미스터리 유튜브 채널 자동화 파이프라인
+YouTube Shorts 영상 제작 자동화 파이프라인.
+한국 역사/문화 이야기를 영어권 시청자에게 전달하는 페이스리스 채널 "LoreDrop"의 콘텐츠 제작 도구.
 
-## Overview
+## 주요 기능
 
-주제 발굴부터 영상 업로드까지 전 과정을 자동화하는 시스템입니다.
-한국어/영어 채널을 동시에 운영하며, n8n이 워크플로우를 오케스트레이션하고 이 앱이 핵심 비즈니스 로직을 API로 제공합니다.
+- **주제 추천**: Claude AI가 매일 3개 주제 추천 → Telegram으로 알림/선택
+- **대본 생성**: 한국어 구조화된 대본 (나레이션 + 장면묘사 + 분위기) → 영어 번역
+- **TTS 음성**: ElevenLabs API로 문단별 음성 생성 (예정)
+- **이미지 생성**: Midjourney로 장면별 이미지 생성 (예정)
+- **YouTube 업로드**: 편집 완료 영상을 채널에 업로드 (예정)
 
-## Pipeline Stages
-
-| Stage | 설명 | 사용자 개입 |
-|---|---|---|
-| **Stage 1** | 트렌드 수집 → 주제 추천 → 텔레그램 알림 | 주제 선택 |
-| **Stage 2** | Claude API로 스크립트 생성 → 이메일 발송 | - |
-| **Stage 3** | 한→영 현지화 → TTS 음성 → 영상 조립 | - |
-| **Stage 4** | 완성 영상 알림 → YouTube 업로드 | 최종 승인 |
-
-## Tech Stack
-
-- **스크립트 생성**: Claude API
-- **음성 생성**: ElevenLabs API
-- **영상 조립**: Pictory API → FFmpeg
-- **업로드**: YouTube Data API v3
-- **오케스트레이션**: n8n (별도 컨테이너)
-- **콘텐츠 DB**: Airtable
-- **알림**: Telegram Bot, Email
-
-## Project Structure
+## Production 파이프라인
 
 ```
-src/
-├── api/            # n8n이 호출할 API 엔드포인트 (FastAPI)
-├── pipeline/       # 비즈니스 로직 (트렌드 → 스크립트 → TTS → 영상 → 업로드)
-├── notify/         # 알림 (텔레그램, 이메일)
-└── store/          # 외부 저장소 연동 (Airtable)
-
-web/                # 관리 대시보드
-output/             # 생성물 (scripts, audio, videos)
+1. Confirm Topic     → 주제 확정
+2. Generate Script   → 한국어 대본 생성 (scene/mood 포함) → 검수/수정
+3. Translate Script  → 영어 번역 (scene/mood 영어 변환)
+4. Generate TTS      → 영어 대본으로 음성 생성
+5. Generate Images   → 장면 묘사로 이미지 생성
+6. Upload            → 편집 완료 영상 YouTube 업로드
 ```
 
-**호출 흐름:**
-```
-n8n → src/api/ → src/pipeline/ → src/store/
-                               → src/notify/
-```
+## 기술 스택
 
-## Getting Started
+| 구분 | 기술 |
+|------|------|
+| Backend | Flask + Jinja2 + Gunicorn |
+| Frontend | jQuery + Bootstrap 5 |
+| Database | PostgreSQL 16 |
+| Cache/Settings | Redis 7 |
+| AI | Claude API (Anthropic) |
+| TTS | ElevenLabs API |
+| Container | Docker Compose (5 services) |
+| Tunnel | ngrok (Telegram webhook용) |
 
-### Prerequisites
+## 시작하기
+
+### 사전 요구사항
 
 - Docker & Docker Compose
-- `.env` 파일에 API 키 설정
+- `.env` 파일 설정 (API 키)
 
-### Run
+### 실행
 
 ```bash
+# 컨테이너 시작
 docker-compose up -d
+
+# DB 마이그레이션 (최초 1회)
+docker-compose exec app flask db upgrade
+
+# 기본 프롬프트/설정 시드 (최초 1회)
+docker-compose exec app flask seed
 ```
 
-- App: `http://localhost:8000`
-- n8n: `http://localhost:5678`
+### 접속
 
-### Environment Variables
+- **Web UI**: http://localhost:8000
+- **n8n**: http://localhost:5678
+- **외부 접속**: https://nonrepudiative-enriqueta-sparkily.ngrok-free.dev
+
+### 환경변수 (.env)
 
 ```env
-# Anthropic
+# Claude API
 ANTHROPIC_API_KEY=
 
-# ElevenLabs
+# Telegram Bot
+TELEGRAM_TOKEN=
+TELEGRAM_CHATID=
+
+# ElevenLabs TTS
 ELEVENLABS_API_KEY=
 ELEVENLABS_KO_VOICE_ID=
 ELEVENLABS_EN_VOICE_ID=
 
-# YouTube (OAuth2)
-YOUTUBE_CLIENT_ID=
-YOUTUBE_CLIENT_SECRET=
-YOUTUBE_KO_CHANNEL_ID=
-YOUTUBE_EN_CHANNEL_ID=
+# ngrok
+NGROK_DOMAIN=
+NGROK_AUTHTOKEN=
 
-# Airtable
-AIRTABLE_API_KEY=
-AIRTABLE_BASE_ID=
-AIRTABLE_TABLE_NAME=
-
-# Pictory
-PICTORY_API_KEY=
-
-# Telegram Bot
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-
-# n8n
-N8N_AUTH_USER=admin
-N8N_AUTH_PASSWORD=
+# (자동 설정 - docker-compose.yml에서 주입)
+# DATABASE_URL=postgresql://loredrop:loredrop@postgres:5432/loredrop
+# REDIS_URL=redis://redis:6379/0
 ```
 
-## License
+## 웹 UI 메뉴
 
-Private
+| 메뉴 | 기능 |
+|------|------|
+| Dashboard | 요약/통계 |
+| Topics | 주제 추천/선택 관리 |
+| Production | 영상 제작 파이프라인 실행/모니터링 |
+| Prompts | AI 프롬프트 관리 (system + user) |
+| Settings | TTS/이미지/일반 설정 |
+| n8n | n8n 워크플로우 접근 |
+
+## Telegram 연동
+
+- 매일 설정된 시각에 3개 주제 추천 메시지 발송
+- 인라인 버튼으로 주제 선택 / 재생성 / 직접 입력
+- ngrok 터널을 통해 webhook 수신
+
