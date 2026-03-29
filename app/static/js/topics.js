@@ -1,46 +1,128 @@
 $(document).ready(function() {
     var selectedTopicId = null;
 
-    // Load topics
     function loadTopics() {
-        var date = $('#filter-date').val();
-        var status = $('#filter-status').val();
         var params = {};
+        var date = $('#filter-date').val();
         if (date) params.date = date;
-        if (status) params.status = status;
 
         $.getJSON('/topics/api/list', params, function(data) {
-            var $tbody = $('#topics-table-body');
-            $tbody.empty();
-            if (!data.topics || data.topics.length === 0) {
-                $tbody.html('<tr><td colspan="6" class="text-center text-muted py-4">No topics found.</td></tr>');
-                return;
-            }
-            data.topics.forEach(function(topic) {
-                var statusBadge = topic.is_selected
-                    ? '<span class="badge bg-success">Selected</span>'
-                    : '<span class="badge bg-secondary">Recommended</span>';
-                var actions = topic.is_selected
-                    ? '<a href="/pipeline/start/' + topic.id + '" class="btn btn-sm btn-outline-primary">Pipeline</a>'
-                    : '<button class="btn btn-sm btn-primary btn-select-topic" data-id="' + topic.id + '" data-title="' + topic.title + '">Select</button>';
-                $tbody.append(
-                    '<tr>' +
-                    '<td>' + topic.id + '</td>' +
-                    '<td>' + topic.title + '</td>' +
-                    '<td>' + (topic.category || '-') + '</td>' +
-                    '<td>' + (topic.batch_date || '-') + '</td>' +
-                    '<td>' + statusBadge + '</td>' +
-                    '<td>' + actions + '</td>' +
-                    '</tr>'
-                );
+            var selected = [];
+            var unselected = [];
+
+            (data.topics || []).forEach(function(t) {
+                if (t.is_selected) {
+                    selected.push(t);
+                } else {
+                    unselected.push(t);
+                }
             });
+
+            renderSelected(selected);
+            renderUnselected(unselected);
         });
     }
+
+    function formatDescription(desc) {
+        if (!desc) return '<span class="text-muted">No description</span>';
+        var html = '';
+        desc.split('\n').forEach(function(line) {
+            line = line.trim();
+            if (!line) return;
+            if (line.startsWith('EN:')) {
+                html += '<div class="mb-1"><i class="bi bi-translate me-1 text-primary"></i><em>' + line.substring(3).trim() + '</em></div>';
+            } else if (line.startsWith('Why:')) {
+                html += '<div class="mb-1">💡 ' + line.substring(4).trim() + '</div>';
+            } else if (line.startsWith('Points:')) {
+                html += '<div class="mb-1"><i class="bi bi-list-check me-1 text-success"></i>' + line.substring(7).trim() + '</div>';
+            } else if (line.startsWith('Keywords:')) {
+                var keywords = line.substring(9).trim().split(',');
+                html += '<div class="mb-1">';
+                keywords.forEach(function(k) {
+                    k = k.trim();
+                    if (k) html += '<span class="badge bg-secondary bg-opacity-10 text-secondary me-1">' + k + '</span>';
+                });
+                html += '</div>';
+            } else {
+                html += '<div class="mb-1">' + line + '</div>';
+            }
+        });
+        return html;
+    }
+
+    function renderSelected(topics) {
+        var $tbody = $('#selected-table-body');
+        $('#selected-count').text(topics.length);
+        $tbody.empty();
+
+        if (topics.length === 0) {
+            $tbody.html('<tr><td colspan="6" class="text-center text-muted py-3">No topics selected yet.</td></tr>');
+            return;
+        }
+
+        topics.forEach(function(t) {
+            var typeBadge = t.video_type === 'short'
+                ? '<span class="badge bg-info bg-opacity-10 text-info">Short</span>'
+                : '<span class="badge bg-purple bg-opacity-10 text-purple">Long</span>';
+            $tbody.append(
+                '<tr class="topic-row" style="cursor:pointer;" data-id="' + t.id + '">' +
+                '<td>' + t.id + '</td>' +
+                '<td><i class="bi bi-chevron-right me-1 small toggle-icon"></i>' + t.title + '</td>' +
+                '<td><span class="badge bg-dark bg-opacity-10 text-dark">' + (t.category || '-') + '</span></td>' +
+                '<td>' + (typeBadge || '-') + '</td>' +
+                '<td>' + (t.batch_date || '-') + '</td>' +
+                '<td><a href="/pipeline/start/' + t.id + '" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">Pipeline</a></td>' +
+                '</tr>' +
+                '<tr class="detail-row d-none" data-parent="' + t.id + '">' +
+                '<td colspan="6" class="bg-light px-4 py-3" style="border-top:none;">' +
+                formatDescription(t.description) +
+                '</td>' +
+                '</tr>'
+            );
+        });
+    }
+
+    function renderUnselected(topics) {
+        var $tbody = $('#unselected-table-body');
+        $('#unselected-count').text(topics.length);
+        $tbody.empty();
+
+        if (topics.length === 0) {
+            $tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No recommended topics.</td></tr>');
+            return;
+        }
+
+        topics.forEach(function(t) {
+            $tbody.append(
+                '<tr class="topic-row" style="cursor:pointer;" data-id="' + t.id + '">' +
+                '<td>' + t.id + '</td>' +
+                '<td><i class="bi bi-chevron-right me-1 small toggle-icon"></i>' + t.title + '</td>' +
+                '<td><span class="badge bg-dark bg-opacity-10 text-dark">' + (t.category || '-') + '</span></td>' +
+                '<td>' + (t.batch_date || '-') + '</td>' +
+                '<td><button class="btn btn-sm btn-primary btn-select-topic" data-id="' + t.id + '" data-title="' + t.title + '" onclick="event.stopPropagation();">Select</button></td>' +
+                '</tr>' +
+                '<tr class="detail-row d-none" data-parent="' + t.id + '">' +
+                '<td colspan="5" class="bg-light px-4 py-3" style="border-top:none;">' +
+                formatDescription(t.description) +
+                '</td>' +
+                '</tr>'
+            );
+        });
+    }
+
+    // Toggle detail row on click
+    $(document).on('click', '.topic-row', function() {
+        var id = $(this).data('id');
+        var $detail = $('tr.detail-row[data-parent="' + id + '"]');
+        var $icon = $(this).find('.toggle-icon');
+        $detail.toggleClass('d-none');
+        $icon.toggleClass('bi-chevron-right bi-chevron-down');
+    });
 
     loadTopics();
 
     // Filter change
-    $('#filter-date, #filter-status').on('change', loadTopics);
+    $('#filter-date').on('change', loadTopics);
 
     // Generate topics
     $('#btn-generate').on('click', function() {
@@ -49,7 +131,7 @@ $(document).ready(function() {
             url: '/topics/generate',
             method: 'POST',
             data: '{}',
-            success: function(data) {
+            success: function() {
                 showToast('Topics generated!', 'success');
                 loadTopics();
             },

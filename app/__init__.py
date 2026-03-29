@@ -38,8 +38,32 @@ def create_app(config_name=None):
     # Register CLI commands
     register_commands(app)
 
+    # Initialize scheduler and Telegram webhook (skip during CLI commands)
+    if not app.config.get('TESTING') and os.environ.get('FLASK_RUN_FROM_CLI') != 'true':
+        with app.app_context():
+            _init_services(app)
+
     return app
 
+
+def _init_services(app):
+    """Initialize background services (scheduler, Telegram webhook)."""
+    try:
+        from .services.system.scheduler_service import init_scheduler
+        init_scheduler(app)
+    except Exception as e:
+        print(f'[Init] Scheduler init failed: {e}')
+
+    # Set Telegram webhook if ngrok domain is configured
+    ngrok_domain = app.config.get('NGROK_DOMAIN')
+    if ngrok_domain:
+        try:
+            from .services.distribution.telegram_service import set_webhook
+            webhook_url = f'https://{ngrok_domain}/webhook/telegram'
+            result = set_webhook(webhook_url)
+            print(f'[Init] Telegram webhook set: {webhook_url} -> {result.get("ok")}')
+        except Exception as e:
+            print(f'[Init] Telegram webhook failed: {e}')
 
 def register_commands(app):
     """Register custom Flask CLI commands."""
@@ -99,10 +123,10 @@ def register_commands(app):
                     '각 주제의 story_points에 구체적인 연도, 인물명, 사건명을 반드시 포함할 것.\n\n'
                     '이전에 다룬 주제 목록 (중복 금지):\n{existing_topics}\n\n'
                     '반드시 아래 JSON 형식으로만 응답해.\n'
-                    '```json 코드블록 없이 {{ 로 시작해서 }} 로 끝나는 순수 JSON만 출력:\n\n'
-                    '{{\n'
+                    '코드블록 없이 순수 JSON만 출력:\n\n'
+                    '{\n'
                     '  "topics": [\n'
-                    '    {{\n'
+                    '    {\n'
                     '      "number": 1,\n'
                     '      "title_en": "영어 제목",\n'
                     '      "title_kr": "한글 제목",\n'
@@ -112,9 +136,9 @@ def register_commands(app):
                     '      "keywords": "keyword1, keyword2, keyword3",\n'
                     '      "story_points": "스토리 핵심 포인트 3~4줄 (한국어)",\n'
                     '      "difficulty": "상/중/하"\n'
-                    '    }}\n'
+                    '    }\n'
                     '  ]\n'
-                    '}}'
+                    '}'
                 ),
             },
             'script_short': {

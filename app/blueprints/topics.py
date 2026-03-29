@@ -1,4 +1,3 @@
-from datetime import date
 from flask import Blueprint, render_template, jsonify, request
 from ..extensions import db
 from ..models.topic import RecommendedTopic, SelectedTopic
@@ -31,28 +30,53 @@ def list_topics():
 
 @topics_bp.route('/generate', methods=['POST'])
 def generate_topics():
-    # TODO: Call AI service to generate topics
-    # For now, return placeholder
-    return jsonify({'ok': True, 'message': 'Topic generation not yet implemented'}), 200
+    """Generate topic recommendations via Claude API."""
+    from ..services.content.topic_service import generate_topics as gen_topics
+    from ..services.distribution.telegram_service import send_topic_choices
+    from ..extensions import redis_client
+
+    try:
+        topics = gen_topics()
+
+        # Send to Telegram if enabled
+        telegram_enabled = redis_client.hget('settings:general', 'telegram_enabled')
+        if telegram_enabled != 'false' and len(topics) > 0:
+            try:
+                send_topic_choices(topics)
+            except Exception as e:
+                # Don't fail the whole request if Telegram fails
+                print(f'Telegram send failed: {e}')
+
+        return jsonify({
+            'ok': True,
+            'topics': [t.to_dict() for t in topics],
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @topics_bp.route('/<int:topic_id>/select', methods=['POST'])
 def select_topic(topic_id):
-    topic = RecommendedTopic.query.get_or_404(topic_id)
-    if topic.is_selected:
-        return jsonify({'error': 'Topic already selected'}), 400
+    """Mark a recommended topic as selected."""
+    from ..services.content.topic_service import select_topic as do_select
+    from ..services.distribution.telegram_service import send_message
 
     data = request.get_json() or {}
     video_type = data.get('video_type', 'short')
 
-    topic.is_selected = True
+    try:
+        selected = do_select(topic_id, video_type)
 
-    selected = SelectedTopic(
-        recommended_topic_id=topic.id,
-        title=topic.title,
-        video_type=video_type,
-    )
-    db.session.add(selected)
-    db.session.commit()
+        # Notify via Telegram
+        try:
+            send_message(
+                f'<b>Topic Selected</b>\n\n'
+                f'{selected.title}\n'
+                f'Type: {selected.video_type}'
+            )
+        except Exception:
+            pass
 
-    return jsonify({'ok': True, 'selected_topic': selected.to_dict()})
+        return jsonify({'ok': True, 'selected_topic': selected.to_dict()})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400

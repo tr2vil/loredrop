@@ -17,7 +17,7 @@ class RecommendedTopic(db.Model):
     selected_topic = db.relationship('SelectedTopic', backref='recommended_topic', uselist=False)
 
     def to_dict(self):
-        return {
+        d = {
             'id': self.id,
             'title': self.title,
             'description': self.description,
@@ -27,6 +27,10 @@ class RecommendedTopic(db.Model):
             'is_selected': self.is_selected,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+        if self.selected_topic:
+            d['video_type'] = self.selected_topic.video_type
+            d['selected_topic_id'] = self.selected_topic.id
+        return d
 
 
 class SelectedTopic(db.Model):

@@ -14,16 +14,16 @@
     </div>
     <div class="d-flex gap-2">
         <input type="date" class="form-control form-control-sm" id="filter-date" style="width: 160px;">
-        <select class="form-select form-select-sm" id="filter-status" style="width: 140px;">
-            <option value="">All</option>
-            <option value="recommended">Recommended</option>
-            <option value="selected">Selected</option>
-        </select>
     </div>
 </div>
 
-<!-- Topics table -->
-<div class="card stat-card">
+<!-- Selected Topics -->
+<div class="card stat-card mb-4">
+    <div class="card-header bg-white d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <h6 class="mb-0">Selected Topics</h6>
+        <span class="badge bg-success bg-opacity-10 text-success" id="selected-count">0</span>
+    </div>
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
             <thead class="table-light">
@@ -31,16 +31,41 @@
                     <th style="width: 40px;">#</th>
                     <th>Title</th>
                     <th style="width: 100px;">Category</th>
-                    <th style="width: 100px;">Date</th>
-                    <th style="width: 100px;">Status</th>
-                    <th style="width: 120px;">Actions</th>
+                    <th style="width: 100px;">Type</th>
+                    <th style="width: 110px;">Date</th>
+                    <th style="width: 100px;">Actions</th>
                 </tr>
             </thead>
-            <tbody id="topics-table-body">
+            <tbody id="selected-table-body">
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">
-                        No topics yet. Click "Generate Topics" to get started.
-                    </td>
+                    <td colspan="6" class="text-center text-muted py-3">No topics selected yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Unselected Topics -->
+<div class="card stat-card">
+    <div class="card-header bg-white d-flex align-items-center gap-2">
+        <i class="bi bi-clock text-secondary"></i>
+        <h6 class="mb-0">Recommended (Not Selected)</h6>
+        <span class="badge bg-secondary bg-opacity-10 text-secondary" id="unselected-count">0</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 40px;">#</th>
+                    <th>Title</th>
+                    <th style="width: 100px;">Category</th>
+                    <th style="width: 110px;">Date</th>
+                    <th style="width: 100px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="unselected-table-body">
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-3">No recommended topics.</td>
                 </tr>
             </tbody>
         </table>
