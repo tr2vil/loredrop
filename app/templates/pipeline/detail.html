@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}LoreDrop - Pipeline Run #{{ run.id }}{% endblock %}
+{% block page_title %}
+    <i class="bi bi-diagram-3 me-2"></i>Pipeline Run #{{ run.id }}
+{% endblock %}
+
+{% block content %}
+<!-- Run info -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 class="mb-1">{{ run.selected_topic.title }}</h5>
+        <span class="badge bg-{{ 'primary' if run.status == 'running' else 'success' if run.status == 'completed' else 'danger' if run.status == 'failed' else 'secondary' }}">
+            {{ run.status | upper }}
+        </span>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="auto-mode-toggle"
+                   data-run-id="{{ run.id }}" {{ 'checked' if run.auto_mode }}>
+            <label class="form-check-label" for="auto-mode-toggle">Auto Mode</label>
+        </div>
+    </div>
+</div>
+
+<!-- Step progress -->
+<div class="d-flex align-items-start justify-content-center flex-wrap gap-0 mb-4" id="step-flow">
+    {% for step in run.steps %}
+    <div class="d-flex align-items-center">
+        {% if not loop.first %}
+        <div class="step-connector {{ step.status }}"></div>
+        {% endif %}
+        <div class="step-card {{ step.status }}" id="step-{{ step.step_name }}">
+            <div class="step-icon">
+                {% if step.status == 'completed' %}
+                    <i class="bi bi-check-circle-fill"></i>
+                {% elif step.status == 'running' %}
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                {% elif step.status == 'failed' %}
+                    <i class="bi bi-x-circle-fill"></i>
+                {% else %}
+                    <i class="bi bi-circle"></i>
+                {% endif %}
+            </div>
+            <div class="step-name small fw-bold">{{ step.step_name | replace('_', ' ') | title }}</div>
+            {% if step.status == 'pending' %}
+            <button class="btn btn-sm btn-outline-primary mt-2 btn-execute-step"
+                    data-run-id="{{ run.id }}" data-step="{{ step.step_name }}"
+                    {% if not loop.first %}disabled{% endif %}>
+                Execute
+            </button>
+            {% elif step.status == 'failed' %}
+            <button class="btn btn-sm btn-outline-danger mt-2 btn-execute-step"
+                    data-run-id="{{ run.id }}" data-step="{{ step.step_name }}">
+                Retry
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Log feed -->
+<div class="card stat-card">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-terminal me-2"></i>Execution Log</h6>
+    </div>
+    <div class="card-body bg-dark text-light" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.85rem;"
+         id="log-feed">
+        <p class="text-muted">Waiting for execution...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    var RUN_ID = {{ run.id }};
+</script>
+<script src="{{ url_for('static', filename='js/pipeline.js') }}"></script>
+{% endblock %}

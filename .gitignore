@@ -1,10 +1,35 @@
+# Environment & Secrets
 .env
-output/scripts/*
-output/audio/*
-output/videos/*
-!output/.gitkeep
+.env_bk
+.env.*
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
 .venv/
+venv/
+dist/
+build/
+
+# Output artifacts
+output/scripts/*
+output/audio/*
+output/images/*
+output/videos/*
+!output/.gitkeep
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
 idea/
 .claude/settings.local.json

@@ -1,0 +1,26 @@
+<!-- Partial: pipeline step card (used by jQuery to rebuild step UI) -->
+<div class="step-card {{ status }}" id="step-{{ step_name }}">
+    <div class="step-icon">
+        {% if status == 'completed' %}
+            <i class="bi bi-check-circle-fill"></i>
+        {% elif status == 'running' %}
+            <div class="spinner-border spinner-border-sm" role="status"></div>
+        {% elif status == 'failed' %}
+            <i class="bi bi-x-circle-fill"></i>
+        {% else %}
+            <i class="bi bi-circle"></i>
+        {% endif %}
+    </div>
+    <div class="step-name small fw-bold">{{ step_name | replace('_', ' ') | title }}</div>
+    {% if status == 'pending' and can_execute %}
+    <button class="btn btn-sm btn-outline-primary mt-2 btn-execute-step"
+            data-run-id="{{ run_id }}" data-step="{{ step_name }}">
+        Execute
+    </button>
+    {% elif status == 'failed' %}
+    <button class="btn btn-sm btn-outline-danger mt-2 btn-execute-step"
+            data-run-id="{{ run_id }}" data-step="{{ step_name }}">
+        Retry
+    </button>
+    {% endif %}
+</div>

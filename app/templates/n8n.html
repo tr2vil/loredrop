@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}LoreDrop - n8n Workflows{% endblock %}
+{% block page_title %}
+    <i class="bi bi-boxes me-2"></i>n8n Workflows
+    <a href="http://localhost:5678" target="_blank" class="btn btn-sm btn-outline-primary ms-3">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Open in New Tab
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="card stat-card position-relative" style="height: calc(100vh - 140px);">
+    <div id="n8n-loading" class="position-absolute top-50 start-50 translate-middle text-center" style="z-index: 1;">
+        <div class="spinner-border text-primary mb-3" role="status"></div>
+        <p class="text-muted">Loading n8n...</p>
+    </div>
+    <iframe id="n8n-iframe" src="http://localhost:5678"
+            class="n8n-frame rounded"
+            onload="document.getElementById('n8n-loading').style.display='none';"
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // If iframe fails to load after 5 seconds, show fallback message
+    setTimeout(function() {
+        var $loading = $('#n8n-loading');
+        if ($loading.is(':visible')) {
+            $loading.html(
+                '<i class="bi bi-exclamation-triangle text-warning" style="font-size: 2rem;"></i>' +
+                '<p class="text-muted mt-2">n8n cannot be loaded in iframe.</p>' +
+                '<a href="http://localhost:5678" target="_blank" class="btn btn-primary">' +
+                '<i class="bi bi-box-arrow-up-right me-1"></i>Open n8n in New Tab</a>'
+            );
+        }
+    }, 5000);
+});
+</script>
+{% endblock %}

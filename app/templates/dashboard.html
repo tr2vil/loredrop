@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}LoreDrop - Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats row -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-lightbulb"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Today's Topics</div>
+                    <div class="fs-4 fw-bold" id="stat-topics">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Selected</div>
+                    <div class="fs-4 fw-bold" id="stat-selected">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                    <i class="bi bi-diagram-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Active Pipelines</div>
+                    <div class="fs-4 fw-bold" id="stat-pipelines">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                    <i class="bi bi-youtube"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Uploaded</div>
+                    <div class="fs-4 fw-bold" id="stat-uploaded">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent activity -->
+<div class="row g-4">
+    <div class="col-md-8">
+        <div class="card stat-card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Recent Pipeline Runs</h6>
+                <a href="{{ url_for('pipeline.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div id="recent-pipelines">
+                    <p class="text-muted text-center py-4">No pipeline runs yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Today's Topics</h6>
+                <button class="btn btn-sm btn-primary" id="btn-generate-topics">
+                    <i class="bi bi-plus-lg"></i> Generate
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="today-topics">
+                    <p class="text-muted text-center py-4">No topics for today.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

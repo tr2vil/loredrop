@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}LoreDrop - Settings{% endblock %}
+{% block page_title %}
+    <i class="bi bi-gear me-2"></i>Settings
+{% endblock %}
+
+{% block content %}
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#tab-tts">
+            <i class="bi bi-mic me-1"></i> TTS
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tab-midjourney">
+            <i class="bi bi-image me-1"></i> Midjourney
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tab-general">
+            <i class="bi bi-sliders me-1"></i> General
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tab-apikeys">
+            <i class="bi bi-key me-1"></i> API Keys
+        </a>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- TTS Settings -->
+    <div class="tab-pane fade show active" id="tab-tts">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Korean Voice ID</label>
+                        <input type="text" class="form-control settings-input" data-section="tts" data-key="ko_voice_id">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">English Voice ID</label>
+                        <input type="text" class="form-control settings-input" data-section="tts" data-key="en_voice_id">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Model</label>
+                        <select class="form-select settings-input" data-section="tts" data-key="model_id">
+                            <option value="eleven_multilingual_v2">eleven_multilingual_v2</option>
+                            <option value="eleven_monolingual_v1">eleven_monolingual_v1</option>
+                            <option value="eleven_turbo_v2_5">eleven_turbo_v2_5</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Speed <span class="text-muted fw-normal" id="tts-speed-val">1.0</span></label>
+                        <input type="range" class="form-range settings-input" data-section="tts" data-key="speed"
+                               min="0.5" max="2.0" step="0.1" value="1.0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Stability <span class="text-muted fw-normal" id="tts-stability-val">0.5</span></label>
+                        <input type="range" class="form-range settings-input" data-section="tts" data-key="stability"
+                               min="0" max="1" step="0.05" value="0.5">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Similarity <span class="text-muted fw-normal" id="tts-similarity-val">0.75</span></label>
+                        <input type="range" class="form-range settings-input" data-section="tts" data-key="similarity"
+                               min="0" max="1" step="0.05" value="0.75">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Style <span class="text-muted fw-normal" id="tts-style-val">0.0</span></label>
+                        <input type="range" class="form-range settings-input" data-section="tts" data-key="style"
+                               min="0" max="1" step="0.05" value="0.0">
+                    </div>
+                </div>
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-primary btn-save-settings" data-section="tts">
+                        <i class="bi bi-check-lg me-1"></i> Save
+                    </button>
+                    <button class="btn btn-outline-secondary btn-test-settings" data-section="tts">
+                        <i class="bi bi-play me-1"></i> Test Connection
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Midjourney Settings -->
+    <div class="tab-pane fade" id="tab-midjourney">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Midjourney integration is planned for a future update. Configure settings now for when it's ready.
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Style Preset</label>
+                        <input type="text" class="form-control settings-input" data-section="midjourney" data-key="style_preset"
+                               placeholder="e.g., cinematic dark moody historical">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Aspect Ratio</label>
+                        <select class="form-select settings-input" data-section="midjourney" data-key="aspect_ratio">
+                            <option value="9:16">9:16 (Shorts)</option>
+                            <option value="16:9">16:9 (Standard)</option>
+                            <option value="1:1">1:1 (Square)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Quality</label>
+                        <select class="form-select settings-input" data-section="midjourney" data-key="quality">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">MJ Version</label>
+                        <select class="form-select settings-input" data-section="midjourney" data-key="version">
+                            <option value="v6.1">v6.1</option>
+                            <option value="v6">v6</option>
+                            <option value="v5.2">v5.2</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Negative Prompt</label>
+                        <textarea class="form-control settings-input" data-section="midjourney" data-key="negative_prompt"
+                                  rows="2" placeholder="Elements to exclude..."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Character References (image URLs, one per line)</label>
+                        <textarea class="form-control settings-input" data-section="midjourney" data-key="character_refs"
+                                  rows="3" placeholder="https://example.com/character1.png"></textarea>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button class="btn btn-primary btn-save-settings" data-section="midjourney">
+                        <i class="bi bi-check-lg me-1"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- General Settings -->
+    <div class="tab-pane fade" id="tab-general">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Default Language</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input settings-input" type="radio" name="defaultLang"
+                                       data-section="general" data-key="default_language" value="ko" checked>
+                                <label class="form-check-label">Korean</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input settings-input" type="radio" name="defaultLang"
+                                       data-section="general" data-key="default_language" value="en">
+                                <label class="form-check-label">English</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Default Video Type</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input settings-input" type="radio" name="defaultVideoType"
+                                       data-section="general" data-key="default_video_type" value="short" checked>
+                                <label class="form-check-label">Shorts</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input settings-input" type="radio" name="defaultVideoType"
+                                       data-section="general" data-key="default_video_type" value="long">
+                                <label class="form-check-label">Long</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Daily Topic Count</label>
+                        <input type="number" class="form-control settings-input" data-section="general"
+                               data-key="daily_topic_count" value="3" min="1" max="10">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Auto-generate Time</label>
+                        <input type="time" class="form-control settings-input" data-section="general"
+                               data-key="schedule_time" value="09:00">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Telegram Notifications</label>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input settings-input" type="checkbox"
+                                   data-section="general" data-key="telegram_enabled" checked>
+                            <label class="form-check-label">Enabled</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button class="btn btn-primary btn-save-settings" data-section="general">
+                        <i class="bi bi-check-lg me-1"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Keys -->
+    <div class="tab-pane fade" id="tab-apikeys">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Claude API Key</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control settings-input" data-section="api_keys"
+                                   data-key="anthropic_api_key" placeholder="sk-ant-...">
+                            <button class="btn btn-outline-secondary btn-toggle-pw" type="button">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">ElevenLabs API Key</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control settings-input" data-section="api_keys"
+                                   data-key="elevenlabs_api_key" placeholder="xi-...">
+                            <button class="btn btn-outline-secondary btn-toggle-pw" type="button">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Telegram Bot Token</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control settings-input" data-section="api_keys"
+                                   data-key="telegram_token" placeholder="123456:ABC-...">
+                            <button class="btn btn-outline-secondary btn-toggle-pw" type="button">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Telegram Chat ID</label>
+                        <input type="text" class="form-control settings-input" data-section="api_keys"
+                               data-key="telegram_chat_id">
+                    </div>
+                </div>
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-primary btn-save-settings" data-section="api_keys">
+                        <i class="bi bi-check-lg me-1"></i> Save
+                    </button>
+                    <button class="btn btn-outline-secondary btn-test-settings" data-section="api_keys">
+                        <i class="bi bi-play me-1"></i> Test Connections
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Slider value display
+    $('input[type="range"]').on('input', function() {
+        var key = $(this).data('key');
+        var section = $(this).data('section');
+        $('#' + section + '-' + key + '-val').text($(this).val());
+    });
+
+    // Password toggle
+    $('.btn-toggle-pw').on('click', function() {
+        var $input = $(this).closest('.input-group').find('input');
+        var type = $input.attr('type') === 'password' ? 'text' : 'password';
+        $input.attr('type', type);
+        $(this).find('i').toggleClass('bi-eye bi-eye-slash');
+    });
+
+    // Save settings
+    $('.btn-save-settings').on('click', function() {
+        var section = $(this).data('section');
+        var data = {};
+        $('.settings-input[data-section="' + section + '"]').each(function() {
+            var key = $(this).data('key');
+            if (!key) return;
+            if ($(this).is(':checkbox')) {
+                data[key] = $(this).is(':checked') ? 'true' : 'false';
+            } else if ($(this).is(':radio')) {
+                if ($(this).is(':checked')) data[key] = $(this).val();
+            } else {
+                data[key] = $(this).val();
+            }
+        });
+        $.ajax({
+            url: '/settings/api/' + section,
+            method: 'PUT',
+            data: JSON.stringify(data),
+            success: function() { showToast('Settings saved!', 'success'); },
+            error: function() { showToast('Failed to save settings.', 'danger'); }
+        });
+    });
+
+    // Load settings on page load
+    ['tts', 'midjourney', 'general', 'api_keys'].forEach(function(section) {
+        $.getJSON('/settings/api/' + section, function(data) {
+            Object.keys(data).forEach(function(key) {
+                var $el = $('.settings-input[data-section="' + section + '"][data-key="' + key + '"]');
+                if ($el.is(':checkbox')) {
+                    $el.prop('checked', data[key] === 'true');
+                } else if ($el.is(':radio')) {
+                    $el.filter('[value="' + data[key] + '"]').prop('checked', true);
+                } else if ($el.is('input[type="range"]')) {
+                    $el.val(data[key]);
+                    $('#' + section + '-' + key + '-val').text(data[key]);
+                } else {
+                    $el.val(data[key]);
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

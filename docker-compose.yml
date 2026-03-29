@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   app:
     build: .
@@ -8,10 +6,47 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - FLASK_APP=app:create_app()
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://loredrop:loredrop@postgres:5432/loredrop
+      - REDIS_URL=redis://redis:6379/0
     volumes:
+      - ./app:/app/app
+      - ./migrations:/app/migrations
       - ./output:/app/output
     depends_on:
-      - n8n
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: loredrop-postgres
+    environment:
+      POSTGRES_USER: loredrop
+      POSTGRES_PASSWORD: loredrop
+      POSTGRES_DB: loredrop
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loredrop"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: loredrop-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
     restart: unless-stopped
 
   n8n:
@@ -20,13 +55,25 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_AUTH_USER:-admin}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_AUTH_PASSWORD:-changeme}
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_USER_MANAGEMENT_DISABLED=true
       - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://n8n:5678/}
+      - N8N_EDITOR_FRAME_ANCESTORS=http://localhost:8000 https://${NGROK_DOMAIN:-localhost}
     volumes:
       - n8n_data:/home/node/.n8n
     restart: unless-stopped
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: loredrop-ngrok
+    command: http app:8000 --url=${NGROK_DOMAIN}
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    depends_on:
+      - app
+    restart: unless-stopped
+
 volumes:
+  postgres_data:
+  redis_data:
   n8n_data:

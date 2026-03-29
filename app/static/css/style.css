@@ -1,0 +1,142 @@
+/* Sidebar */
+.sidebar {
+    width: 240px;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+}
+
+.sidebar .nav-link {
+    border-radius: 8px;
+    margin-bottom: 2px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    transition: background-color 0.15s;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    font-weight: 600;
+}
+
+/* Main content */
+.main-content {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+/* Pipeline step cards */
+.step-card {
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    min-width: 140px;
+    transition: all 0.2s;
+}
+
+.step-card.pending {
+    border: 2px dashed #dee2e6;
+    color: #6c757d;
+}
+
+.step-card.running {
+    border: 2px solid #0d6efd;
+    background-color: #e7f1ff;
+    color: #0d6efd;
+}
+
+.step-card.completed {
+    border: 2px solid #198754;
+    background-color: #d1e7dd;
+    color: #198754;
+}
+
+.step-card.failed {
+    border: 2px solid #dc3545;
+    background-color: #f8d7da;
+    color: #dc3545;
+}
+
+.step-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+
+.step-connector {
+    width: 40px;
+    height: 2px;
+    background-color: #dee2e6;
+    align-self: center;
+}
+
+.step-connector.completed {
+    background-color: #198754;
+}
+
+/* Status badges */
+.badge-pipeline {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+/* Cards */
+.stat-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+/* Settings sliders */
+.settings-slider {
+    width: 100%;
+}
+
+/* n8n iframe */
+.n8n-frame {
+    width: 100%;
+    height: calc(100vh - 60px);
+    border: none;
+}
+
+/* Prompt editor */
+.prompt-editor {
+    min-height: 300px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}

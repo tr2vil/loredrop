@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}LoreDrop - Pipeline{% endblock %}
+{% block page_title %}
+    <i class="bi bi-diagram-3 me-2"></i>Pipeline
+{% endblock %}
+
+{% block content %}
+<div class="card stat-card">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">Pipeline Runs</h6>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Topic</th>
+                    <th style="width: 120px;">Status</th>
+                    <th style="width: 120px;">Current Step</th>
+                    <th style="width: 80px;">Mode</th>
+                    <th style="width: 150px;">Started</th>
+                    <th style="width: 100px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="pipeline-table-body">
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        No pipeline runs yet. Select a topic to start a pipeline.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pipeline.js') }}"></script>
+{% endblock %}
