@@ -71,7 +71,7 @@ $(document).ready(function() {
                 '<td><span class="badge bg-dark bg-opacity-10 text-dark">' + (t.category || '-') + '</span></td>' +
                 '<td>' + (typeBadge || '-') + '</td>' +
                 '<td>' + (t.batch_date || '-') + '</td>' +
-                '<td><a href="/pipeline/start/' + t.id + '" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">Pipeline</a></td>' +
+                '<td><a href="/pipeline/start/' + t.id + '" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();"><i class="bi bi-camera-reels me-1"></i><span class="d-none d-md-inline">Produce</span></a></td>' +
                 '</tr>' +
                 '<tr class="detail-row d-none" data-parent="' + t.id + '">' +
                 '<td colspan="6" class="bg-light px-4 py-3" style="border-top:none;">' +

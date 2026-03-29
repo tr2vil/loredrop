@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}LoreDrop - Pipeline{% endblock %}
+{% block title %}LoreDrop - Production{% endblock %}
 {% block page_title %}
-    <i class="bi bi-diagram-3 me-2"></i>Pipeline
+    <i class="bi bi-camera-reels me-2"></i>Production
 {% endblock %}
 
 {% block content %}
 <div class="card stat-card">
     <div class="card-header bg-white">
-        <h6 class="mb-0">Pipeline Runs</h6>
+        <h6 class="mb-0">Production Runs</h6>
     </div>
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
@@ -16,25 +16,41 @@
                 <tr>
                     <th style="width: 50px;">#</th>
                     <th>Topic</th>
-                    <th style="width: 120px;">Status</th>
-                    <th style="width: 120px;">Current Step</th>
-                    <th style="width: 80px;">Mode</th>
+                    <th style="width: 100px;">Status</th>
+                    <th style="width: 140px;">Current Step</th>
                     <th style="width: 150px;">Started</th>
-                    <th style="width: 100px;">Actions</th>
+                    <th style="width: 80px;">Actions</th>
                 </tr>
             </thead>
-            <tbody id="pipeline-table-body">
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
-                        No pipeline runs yet. Select a topic to start a pipeline.
-                    </td>
-                </tr>
+            <tbody>
+                {% if runs %}
+                    {% for run in runs %}
+                    <tr>
+                        <td>{{ run.id }}</td>
+                        <td>{{ run.selected_topic.title }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'primary' if run.status == 'running' else 'success' if run.status == 'completed' else 'danger' if run.status == 'failed' else 'secondary' }}">
+                                {{ run.status }}
+                            </span>
+                        </td>
+                        <td class="small text-muted">{{ (run.current_step or '') | replace('_', ' ') | title }}</td>
+                        <td class="small text-muted">{{ run.started_at.strftime('%Y-%m-%d %H:%M') if run.started_at else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('pipeline.detail', run_id=run.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No pipeline runs yet. Select a topic to start a pipeline.
+                        </td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/pipeline.js') }}"></script>
 {% endblock %}

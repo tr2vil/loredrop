@@ -1,37 +1,46 @@
 from datetime import datetime
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, render_template, jsonify, request, redirect, url_for, current_app
 from ..extensions import db, redis_client
 from ..models.topic import SelectedTopic
 from ..models.pipeline_run import PipelineRun, PipelineStep
+from ..pipeline.engine import PIPELINE_STEPS, execute_step
 
 pipeline_bp = Blueprint('pipeline', __name__)
-
-PIPELINE_STEPS = [
-    'topic_confirmed',
-    'script_generated',
-    'tts_completed',
-    'images_generated',
-    'video_assembled',
-    'uploaded',
-]
 
 
 @pipeline_bp.route('/')
 def index():
-    return render_template('pipeline/index.html')
+    runs = PipelineRun.query.order_by(PipelineRun.created_at.desc()).limit(50).all()
+    return render_template('pipeline/index.html', runs=runs)
 
 
 @pipeline_bp.route('/<int:run_id>')
 def detail(run_id):
     run = PipelineRun.query.get_or_404(run_id)
-    run.selected_topic  # eager load
     return render_template('pipeline/detail.html', run=run)
 
 
-@pipeline_bp.route('/start/<int:topic_id>', methods=['POST'])
+@pipeline_bp.route('/start/<int:topic_id>', methods=['GET', 'POST'])
 def start_pipeline(topic_id):
-    topic = SelectedTopic.query.get_or_404(topic_id)
+    """Create a new pipeline run for a selected topic, or navigate to existing one."""
+    # Check if selected topic exists via recommended_topic_id
+    topic = SelectedTopic.query.filter_by(recommended_topic_id=topic_id).first()
+    if not topic:
+        topic = SelectedTopic.query.get(topic_id)
+    if not topic:
+        return jsonify({'error': 'Selected topic not found'}), 404
 
+    # Check for existing active run
+    existing = PipelineRun.query.filter_by(
+        selected_topic_id=topic.id
+    ).filter(
+        PipelineRun.status.in_(['pending', 'running', 'paused'])
+    ).first()
+
+    if existing:
+        return redirect(url_for('pipeline.detail', run_id=existing.id))
+
+    # Create new run
     run = PipelineRun(
         selected_topic_id=topic.id,
         status='pending',
@@ -50,11 +59,11 @@ def start_pipeline(topic_id):
     progress = {s: 'pending' for s in PIPELINE_STEPS}
     redis_client.hset(f'pipeline:run:{run.id}:progress', mapping=progress)
 
-    return jsonify({'ok': True, 'run': run.to_dict()})
+    return redirect(url_for('pipeline.detail', run_id=run.id))
 
 
 @pipeline_bp.route('/<int:run_id>/step/<step_name>/execute', methods=['POST'])
-def execute_step(run_id, step_name):
+def execute_step_route(run_id, step_name):
     if step_name not in PIPELINE_STEPS:
         return jsonify({'error': 'Invalid step'}), 400
 
@@ -64,38 +73,24 @@ def execute_step(run_id, step_name):
     if step.status == 'running':
         return jsonify({'error': 'Step already running'}), 400
 
-    # Update status
-    step.status = 'running'
-    step.started_at = datetime.utcnow()
-    run.status = 'running'
-    run.current_step = step_name
-    if not run.started_at:
-        run.started_at = datetime.utcnow()
+    execute_step(current_app._get_current_object(), run_id, step_name)
+    return jsonify({'ok': True})
+
+
+@pipeline_bp.route('/<int:run_id>/run-all', methods=['POST'])
+def run_all(run_id):
+    """Run all remaining steps sequentially (auto-mode)."""
+    run = PipelineRun.query.get_or_404(run_id)
+    run.auto_mode = True
     db.session.commit()
 
-    # Update Redis
-    redis_client.hset(f'pipeline:run:{run_id}:progress', step_name, 'running')
-    redis_client.rpush(f'pipeline:run:{run_id}:log',
-                       f'[{datetime.utcnow().strftime("%H:%M:%S")}] Starting step: {step_name}')
+    # Find the first pending step and execute it (auto_mode will chain the rest)
+    first_pending = PipelineStep.query.filter_by(
+        run_id=run_id, status='pending'
+    ).order_by(PipelineStep.id).first()
 
-    # TODO: Execute actual step logic in background thread
-    # For now, mark as completed immediately
-    step.status = 'completed'
-    step.completed_at = datetime.utcnow()
-    db.session.commit()
-    redis_client.hset(f'pipeline:run:{run_id}:progress', step_name, 'completed')
-    redis_client.rpush(f'pipeline:run:{run_id}:log',
-                       f'[{datetime.utcnow().strftime("%H:%M:%S")}] Completed step: {step_name}')
-
-    # Check if all steps completed
-    all_completed = all(
-        s.status == 'completed'
-        for s in PipelineStep.query.filter_by(run_id=run_id).all()
-    )
-    if all_completed:
-        run.status = 'completed'
-        run.completed_at = datetime.utcnow()
-        db.session.commit()
+    if first_pending:
+        execute_step(current_app._get_current_object(), run_id, first_pending.step_name)
 
     return jsonify({'ok': True})
 

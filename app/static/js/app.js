@@ -6,12 +6,29 @@ $(document).ready(function() {
             year: 'numeric', month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit'
         });
-        $('#current-time').text(timeStr);
+        $('#current-time, #current-time-mobile').text(timeStr);
     }
     updateTime();
     setInterval(updateTime, 60000);
 
-    // CSRF-safe AJAX setup (for future use)
+    // Mobile sidebar toggle
+    $('#btn-sidebar-toggle').on('click', function() {
+        $('#sidebar').toggleClass('open');
+        $('#sidebar-overlay').toggleClass('d-none show');
+    });
+    $('#sidebar-overlay').on('click', function() {
+        $('#sidebar').removeClass('open');
+        $(this).addClass('d-none').removeClass('show');
+    });
+    // Close sidebar on nav link click (mobile)
+    $('#sidebar .nav-link').on('click', function() {
+        if (window.innerWidth < 768) {
+            $('#sidebar').removeClass('open');
+            $('#sidebar-overlay').addClass('d-none').removeClass('show');
+        }
+    });
+
+    // AJAX defaults
     $.ajaxSetup({
         contentType: 'application/json',
         dataType: 'json'
@@ -26,11 +43,10 @@ $(document).ready(function() {
 // Utility: show toast notification
 function showToast(message, type) {
     type = type || 'info';
-    var alertClass = 'alert-' + type;
-    var $alert = $('<div class="alert ' + alertClass + ' alert-dismissible fade show position-fixed" ' +
-        'style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" role="alert">' +
+    var $alert = $('<div class="alert alert-' + type + ' alert-dismissible fade show position-fixed shadow-sm" ' +
+        'style="top: 16px; right: 16px; z-index: 9999; min-width: 280px; max-width: 90vw; font-size: 0.9rem;" role="alert">' +
         message +
-        '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+        '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>' +
         '</div>');
     $('body').append($alert);
     setTimeout(function() { $alert.fadeOut(function() { $alert.remove(); }); }, 4000);
