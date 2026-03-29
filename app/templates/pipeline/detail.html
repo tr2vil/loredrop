@@ -6,12 +6,12 @@
 {% endblock %}
 
 {% block content %}
-<!-- Header card -->
+<!-- Header -->
 <div class="card stat-card mb-3">
     <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
         <div>
             <h6 class="mb-1">{{ run.selected_topic.title }}</h6>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="badge bg-{{ 'primary' if run.status == 'running' else 'success' if run.status == 'completed' else 'danger' if run.status == 'failed' else 'secondary' }}"
                       id="run-status-badge">{{ run.status | upper }}</span>
                 <span class="badge bg-dark bg-opacity-10 text-dark">{{ run.selected_topic.video_type | upper }}</span>
@@ -27,85 +27,153 @@
 </div>
 
 <!-- Steps -->
+{% set step_icons = {
+    'topic_confirmed': 'bi-check2-square',
+    'script_generated': 'bi-file-earmark-text',
+    'script_translated': 'bi-translate',
+    'tts_completed': 'bi-mic',
+    'images_generated': 'bi-image',
+    'uploaded': 'bi-upload'
+} %}
+{% set step_labels = {
+    'topic_confirmed': 'Confirm Topic',
+    'script_generated': 'Generate Script (KO)',
+    'script_translated': 'Translate Script (EN)',
+    'tts_completed': 'Generate TTS',
+    'images_generated': 'Generate Images',
+    'uploaded': 'Upload to YouTube'
+} %}
+
 <div class="card stat-card mb-3">
     <div class="card-body p-0" id="steps-container">
-        {% set step_icons = {
-            'topic_confirmed': 'bi-check2-square',
-            'script_generated': 'bi-file-earmark-text',
-            'tts_completed': 'bi-mic',
-            'images_generated': 'bi-image',
-            'video_assembled': 'bi-film',
-            'uploaded': 'bi-upload'
-        } %}
-        {% set step_labels = {
-            'topic_confirmed': 'Confirm Topic',
-            'script_generated': 'Generate Script',
-            'tts_completed': 'Generate TTS',
-            'images_generated': 'Generate Images',
-            'video_assembled': 'Assemble Video',
-            'uploaded': 'Upload'
-        } %}
         {% for step in run.steps %}
-        <div class="d-flex align-items-center border-bottom px-3 py-3 step-row" id="step-row-{{ step.step_name }}">
-            <!-- Step number -->
-            <div class="me-3">
-                <span class="step-number
-                    {% if step.status == 'completed' %}bg-success text-white
-                    {% elif step.status == 'running' %}bg-primary text-white
-                    {% elif step.status == 'failed' %}bg-danger text-white
-                    {% else %}bg-light text-muted{% endif %}"
-                    data-step="{{ step.step_name }}">
-                    {% if step.status == 'completed' %}
-                        <i class="bi bi-check"></i>
-                    {% elif step.status == 'running' %}
-                        <span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span>
+        <div class="step-row border-bottom" id="step-row-{{ step.step_name }}">
+            <!-- Step main row -->
+            <div class="d-flex align-items-center px-3 py-3">
+                <div class="me-3">
+                    <span class="step-number
+                        {% if step.status == 'completed' %}bg-success text-white
+                        {% elif step.status == 'running' %}bg-primary text-white
+                        {% elif step.status == 'failed' %}bg-danger text-white
+                        {% else %}bg-light text-muted{% endif %}"
+                        data-step="{{ step.step_name }}">
+                        {% if step.status == 'completed' %}<i class="bi bi-check"></i>
+                        {% elif step.status == 'running' %}<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span>
+                        {% elif step.status == 'failed' %}<i class="bi bi-x"></i>
+                        {% else %}{{ loop.index }}{% endif %}
+                    </span>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi {{ step_icons.get(step.step_name, 'bi-circle') }} text-muted"></i>
+                        <span class="fw-semibold step-label">{{ step_labels.get(step.step_name, step.step_name | replace('_', ' ') | title) }}</span>
+                    </div>
+                    {% if step.status == 'completed' and step.result_data %}
+                    <div class="text-muted small mt-1 step-result-text">
+                        {% if step.result_data.word_count %}
+                            {{ step.result_data.word_count }} chars &middot; {{ step.result_data.paragraphs }} paragraphs
+                        {% elif step.result_data.message %}
+                            {{ step.result_data.message }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if step.status == 'failed' and step.error_message %}
+                    <div class="text-danger small mt-1">{{ step.error_message }}</div>
+                    {% endif %}
+                </div>
+                <div class="ms-2 d-flex align-items-center gap-2">
+                    {% if step.status == 'completed' and step.step_name in ['script_generated', 'script_translated', 'tts_completed', 'images_generated'] %}
+                    <button class="btn btn-sm btn-outline-secondary btn-toggle-result"
+                            data-step="{{ step.step_name }}" title="View result">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    {% endif %}
+                    {% if step.status == 'pending' %}
+                    <button class="btn btn-sm btn-outline-primary btn-execute-step"
+                            data-run-id="{{ run.id }}" data-step="{{ step.step_name }}">
+                        <i class="bi bi-play-fill"></i><span class="d-none d-md-inline ms-1">Run</span>
+                    </button>
                     {% elif step.status == 'failed' %}
-                        <i class="bi bi-x"></i>
-                    {% else %}
-                        {{ loop.index }}
-                    {% endif %}
-                </span>
-            </div>
-
-            <!-- Step icon + label -->
-            <div class="flex-grow-1">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi {{ step_icons.get(step.step_name, 'bi-circle') }} text-muted"></i>
-                    <span class="fw-semibold step-label">{{ step_labels.get(step.step_name, step.step_name | replace('_', ' ') | title) }}</span>
-                </div>
-                {% if step.status == 'completed' and step.result_data %}
-                <div class="text-muted small mt-1 step-result-text">
-                    {% if step.result_data.word_count %}
-                        {{ step.result_data.word_count }} chars &middot; {{ step.result_data.paragraphs }} paragraphs &middot; ~{{ (step.result_data.estimated_duration // 60) }}min
-                    {% elif step.result_data.message %}
-                        {{ step.result_data.message }}
+                    <button class="btn btn-sm btn-outline-danger btn-execute-step"
+                            data-run-id="{{ run.id }}" data-step="{{ step.step_name }}">
+                        <i class="bi bi-arrow-clockwise"></i><span class="d-none d-md-inline ms-1">Retry</span>
+                    </button>
+                    {% elif step.status == 'completed' %}
+                    <i class="bi bi-check-lg text-success"></i>
                     {% endif %}
                 </div>
-                {% endif %}
-                {% if step.status == 'failed' and step.error_message %}
-                <div class="text-danger small mt-1 step-result-text">{{ step.error_message }}</div>
-                {% endif %}
             </div>
 
-            <!-- Action -->
-            <div class="ms-2">
-                {% if step.completed_at %}
-                <span class="text-muted small d-none d-md-inline me-2">{{ step.completed_at.strftime('%H:%M:%S') }}</span>
-                {% endif %}
-                {% if step.status == 'pending' %}
-                <button class="btn btn-sm btn-outline-primary btn-execute-step"
-                        data-run-id="{{ run.id }}" data-step="{{ step.step_name }}">
-                    <i class="bi bi-play-fill"></i><span class="d-none d-md-inline ms-1">Run</span>
-                </button>
-                {% elif step.status == 'failed' %}
-                <button class="btn btn-sm btn-outline-danger btn-execute-step"
-                        data-run-id="{{ run.id }}" data-step="{{ step.step_name }}">
-                    <i class="bi bi-arrow-clockwise"></i><span class="d-none d-md-inline ms-1">Retry</span>
-                </button>
-                {% elif step.status == 'completed' %}
-                <i class="bi bi-check-lg text-success"></i>
-                {% endif %}
+            <!-- Expandable result panel -->
+            {% if step.step_name == 'script_generated' %}
+            <div class="result-panel d-none border-top bg-light" id="result-script_generated">
+                <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold small">Korean Script <span class="text-muted" id="script-char-count"></span></span>
+                        <button class="btn btn-sm btn-primary" id="btn-save-script" disabled>
+                            <i class="bi bi-check-lg me-1"></i>Save
+                        </button>
+                    </div>
+                    <div id="script-paragraphs-container">
+                        <p class="text-muted small py-3 text-center">Loading...</p>
+                    </div>
+                </div>
             </div>
+            {% endif %}
+
+            {% if step.step_name == 'script_translated' %}
+            <div class="result-panel d-none border-top bg-light" id="result-script_translated">
+                <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold small">English Script <span class="text-muted" id="translated-word-count"></span></span>
+                        <button class="btn btn-sm btn-primary" id="btn-save-translated" disabled>
+                            <i class="bi bi-check-lg me-1"></i>Save
+                        </button>
+                    </div>
+                    <div id="en-paragraphs-container">
+                        <p class="text-muted small py-3 text-center">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if step.step_name == 'tts_completed' %}
+            <div class="result-panel d-none border-top bg-light" id="result-tts_completed">
+                <div class="p-3">
+                    <span class="fw-semibold small d-block mb-2">Audio Files</span>
+                    <div id="tts-player-list">
+                        <p class="text-muted small">No audio files generated yet.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if step.step_name == 'images_generated' %}
+            <div class="result-panel d-none border-top bg-light" id="result-images_generated">
+                <div class="p-3">
+                    <span class="fw-semibold small d-block mb-2">Generated Images</span>
+                    <div class="row g-2" id="image-preview-list">
+                        <p class="text-muted small">No images generated yet.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if step.step_name == 'uploaded' %}
+            <div class="result-panel d-none border-top bg-light" id="result-uploaded">
+                <div class="p-3">
+                    <span class="fw-semibold small d-block mb-2">Upload to YouTube</span>
+                    <div class="mb-3">
+                        <label class="form-label small">Select edited video file</label>
+                        <input type="file" class="form-control form-control-sm" id="upload-file" accept="video/*">
+                    </div>
+                    <button class="btn btn-sm btn-danger" id="btn-upload-youtube" disabled>
+                        <i class="bi bi-youtube me-1"></i>Upload to YouTube
+                    </button>
+                    <p class="text-muted small mt-2">Upload is not yet implemented.</p>
+                </div>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -117,7 +185,7 @@
         <span class="fw-semibold small"><i class="bi bi-terminal me-1"></i>Log</span>
         <span class="badge bg-dark bg-opacity-10 text-dark" id="log-count">0</span>
     </div>
-    <div class="card-body bg-dark text-light p-2" style="max-height: 250px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 0.8rem;"
+    <div class="card-body bg-dark text-light p-2" style="max-height: 220px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 0.8rem;"
          id="log-feed">
         <div class="text-muted">Waiting...</div>
     </div>

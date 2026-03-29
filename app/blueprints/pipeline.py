@@ -2,6 +2,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, jsonify, request, redirect, url_for, current_app
 from ..extensions import db, redis_client
 from ..models.topic import SelectedTopic
+from ..models.script import Script, ScriptParagraph
 from ..models.pipeline_run import PipelineRun, PipelineStep
 from ..pipeline.engine import PIPELINE_STEPS, execute_step
 
@@ -116,3 +117,66 @@ def get_status(run_id):
         'steps': [s.to_dict() for s in steps],
         'logs': logs,
     })
+
+
+# ─── Script API ───
+
+@pipeline_bp.route('/api/<int:run_id>/script/<lang>', methods=['GET'])
+def get_script(run_id, lang='ko'):
+    """Get the generated script for a pipeline run by language (ko/en)."""
+    run = PipelineRun.query.get_or_404(run_id)
+    script = Script.query.filter_by(
+        selected_topic_id=run.selected_topic_id, language=lang
+    ).order_by(Script.created_at.desc()).first()
+    if not script:
+        return jsonify({'error': f'No {lang} script found'}), 404
+    return jsonify(script.to_dict())
+
+
+@pipeline_bp.route('/api/<int:run_id>/script/<lang>', methods=['PUT'])
+def update_script(run_id, lang='ko'):
+    """Update/edit the generated script."""
+    run = PipelineRun.query.get_or_404(run_id)
+    script = Script.query.filter_by(
+        selected_topic_id=run.selected_topic_id, language=lang
+    ).order_by(Script.created_at.desc()).first()
+    if not script:
+        return jsonify({'error': f'No {lang} script found'}), 404
+
+    data = request.get_json()
+
+    # Update paragraph-level data if provided
+    if 'paragraphs' in data:
+        for p_data in data['paragraphs']:
+            para = ScriptParagraph.query.get(p_data.get('id'))
+            if para and para.script_id == script.id:
+                if 'text' in p_data:
+                    para.text = p_data['text']
+                if 'scene_direction' in p_data:
+                    para.scene_direction = p_data['scene_direction']
+                if 'mood' in p_data:
+                    para.mood = p_data['mood']
+
+    # Update full_text (rebuild from paragraphs or use provided)
+    if 'full_text' in data:
+        script.full_text = data['full_text']
+        script.word_count = len(data['full_text'])
+
+        # If no paragraph-level data, re-split
+        if 'paragraphs' not in data:
+            ScriptParagraph.query.filter_by(script_id=script.id).delete()
+            for i, text in enumerate(_split_paragraphs(data['full_text'])):
+                para = ScriptParagraph(script_id=script.id, paragraph_index=i, text=text)
+                db.session.add(para)
+
+    db.session.commit()
+    return jsonify({'ok': True, 'script': script.to_dict()})
+
+
+def _split_paragraphs(text):
+    paragraphs = []
+    for block in text.split('\n\n'):
+        block = block.strip()
+        if block:
+            paragraphs.append(block)
+    return paragraphs if paragraphs else [text.strip()]

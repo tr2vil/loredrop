@@ -6,19 +6,28 @@ from ..models.pipeline_run import PipelineRun, PipelineStep
 PIPELINE_STEPS = [
     'topic_confirmed',
     'script_generated',
+    'script_translated',
     'tts_completed',
     'images_generated',
-    'video_assembled',
     'uploaded',
 ]
 
 STEP_LABELS = {
-    'topic_confirmed': 'Topic Confirmed',
-    'script_generated': 'Script Generated',
-    'tts_completed': 'TTS Completed',
-    'images_generated': 'Images Generated',
-    'video_assembled': 'Video Assembled',
-    'uploaded': 'Uploaded',
+    'topic_confirmed': 'Confirm Topic',
+    'script_generated': 'Generate Script (KO)',
+    'script_translated': 'Translate Script (EN)',
+    'tts_completed': 'Generate TTS',
+    'images_generated': 'Generate Images',
+    'uploaded': 'Upload to YouTube',
+}
+
+STEP_ICONS = {
+    'topic_confirmed': 'bi-check2-square',
+    'script_generated': 'bi-file-earmark-text',
+    'script_translated': 'bi-translate',
+    'tts_completed': 'bi-mic',
+    'images_generated': 'bi-image',
+    'uploaded': 'bi-upload',
 }
 
 
@@ -30,21 +39,19 @@ def _log(run_id, message):
 
 def _update_step(run_id, step_name, status, error=None, result=None):
     """Update a step's status in both DB and Redis."""
-    from flask import current_app
-    with current_app.app_context():
-        step = PipelineStep.query.filter_by(run_id=run_id, step_name=step_name).first()
-        if step:
-            step.status = status
-            if status == 'running':
-                step.started_at = datetime.utcnow()
-            elif status in ('completed', 'failed'):
-                step.completed_at = datetime.utcnow()
-            if error:
-                step.error_message = error
-            if result:
-                step.result_data = result
-            db.session.commit()
-        redis_client.hset(f'pipeline:run:{run_id}:progress', step_name, status)
+    step = PipelineStep.query.filter_by(run_id=run_id, step_name=step_name).first()
+    if step:
+        step.status = status
+        if status == 'running':
+            step.started_at = datetime.utcnow()
+        elif status in ('completed', 'failed'):
+            step.completed_at = datetime.utcnow()
+        if error:
+            step.error_message = error
+        if result:
+            step.result_data = result
+        db.session.commit()
+    redis_client.hset(f'pipeline:run:{run_id}:progress', step_name, status)
 
 
 def execute_step(app, run_id, step_name):
@@ -113,25 +120,27 @@ def _execute_step_logic(run, step_name):
             'estimated_duration': script.estimated_duration,
         }
 
+    elif step_name == 'script_translated':
+        from ..services.content.script_service import translate_script
+        script = translate_script(run.selected_topic_id)
+        return {
+            'script_id': script.id,
+            'word_count': script.word_count,
+            'paragraphs': script.paragraphs.count(),
+            'language': 'en',
+        }
+
     elif step_name == 'tts_completed':
-        # TODO: ElevenLabs TTS integration
         _log(run.id, 'TTS: Not yet implemented (stub)')
-        return {'message': 'TTS stub - not yet implemented'}
+        return {'message': 'TTS - not yet implemented'}
 
     elif step_name == 'images_generated':
-        # TODO: Midjourney/image generation
         _log(run.id, 'Images: Not yet implemented (stub)')
-        return {'message': 'Image generation stub - not yet implemented'}
-
-    elif step_name == 'video_assembled':
-        # TODO: FFmpeg video assembly
-        _log(run.id, 'Video: Not yet implemented (stub)')
-        return {'message': 'Video assembly stub - not yet implemented'}
+        return {'message': 'Image generation - not yet implemented'}
 
     elif step_name == 'uploaded':
-        # TODO: YouTube upload
         _log(run.id, 'Upload: Not yet implemented (stub)')
-        return {'message': 'Upload stub - not yet implemented'}
+        return {'message': 'Upload - not yet implemented'}
 
     return {}
 

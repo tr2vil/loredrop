@@ -143,24 +143,36 @@ def register_commands(app):
             },
             'script_short': {
                 'step': 'script_generation',
-                'description': '약 1분 길이의 YouTube Shorts 대본 생성',
+                'description': '약 1분 길이의 YouTube Shorts 구조화된 한국어 대본 생성',
                 'system_prompt': (
-                    'You are a scriptwriter for "LoreDrop", a faceless YouTube Shorts channel.\n'
-                    'Write engaging, concise scripts for ~1 minute narration.\n'
-                    'Style: dramatic, mysterious, hook-driven.\n'
-                    'Language: Korean narration script.'
+                    'You are a scriptwriter for "LoreDrop", a faceless YouTube Shorts channel '
+                    'that tells fascinating Korean history and culture stories to international audiences.\n\n'
+                    'You write structured scripts in Korean. Each paragraph includes:\n'
+                    '- Narration text (Korean)\n'
+                    '- Visual scene description (English, for AI image generation)\n'
+                    '- Mood/tone tag (for TTS voice control)\n\n'
+                    'Target: ~1 minute narration (~600-700 Korean characters total).\n'
+                    'IMPORTANT: Write narration ONLY in Korean. Do NOT include any English translation of the narration.'
                 ),
                 'user_prompt': (
                     '다음 주제에 대해 약 1분 길이의 쇼츠 대본을 작성해줘:\n'
                     '주제: {topic}\n\n'
                     '작성 규칙:\n'
-                    '- 첫 문장에서 시청자의 호기심을 자극할 것 (hook)\n'
-                    '- 총 4-6개 문단으로 구성\n'
-                    '- 각 문단은 1-3문장\n'
-                    '- 나레이션 톤: 긴장감 있고 몰입감 있는 말투\n'
-                    '- 마지막 문단에서 여운을 남기거나 반전 제시\n'
-                    '- 전체 글자 수: 약 300-400자 (한국어 기준)\n\n'
-                    '각 문단을 빈 줄로 구분하여 작성해줘.'
+                    '- 6-8개 문단으로 구성\n'
+                    '- 첫 문단은 강력한 hook (시청자가 스크롤을 멈출 것)\n'
+                    '- 마지막 문단은 여운/반전\n'
+                    '- 구체적인 연도, 인물명, 수치 포함\n'
+                    '- 나레이션 총 글자 수: 약 600-700자 (한국어)\n\n'
+                    '반드시 아래 JSON 형식으로만 응답해. 코드블록 없이 순수 JSON만 출력:\n\n'
+                    '{\n'
+                    '  "paragraphs": [\n'
+                    '    {\n'
+                    '      "narration": "한국어 나레이션 텍스트",\n'
+                    '      "scene": "한국어 장면 묘사 (예: 어두운 회의실, 1980년대 한국, 극적인 조명)",\n'
+                    '      "mood": "분위기 키워드 (예: 긴장감, 신비로움, 승리감, 비장함, 극적, 경이로움, 충격, 희망적)"\n'
+                    '    }\n'
+                    '  ]\n'
+                    '}'
                 ),
             },
             'script_long': {
@@ -184,6 +196,30 @@ def register_commands(app):
                     '- 나레이션 톤: 다큐멘터리 스타일\n'
                     '- 전체 글자 수: 약 2,000-2,500자 (한국어 기준)\n\n'
                     '각 문단을 빈 줄로 구분하여 작성해줘.'
+                ),
+            },
+            'script_translate': {
+                'step': 'script_generation',
+                'description': '한국어 대본을 영어로 번역 (나레이션 + 장면 + 분위기 포함)',
+                'system_prompt': (
+                    'You are a professional translator for "LoreDrop", a YouTube channel '
+                    'that tells Korean stories to English-speaking audiences (teens/20s).\n\n'
+                    'Translate Korean scripts into natural, engaging English.\n'
+                    'Translate ALL fields: narration, scene description, and mood keyword.\n'
+                    'IMPORTANT: Output structured JSON only. No commentary.'
+                ),
+                'user_prompt': (
+                    'Translate the following Korean YouTube script to English.\n'
+                    'Translate ALL fields: narration, scene, and mood.\n\n'
+                    'Rules:\n'
+                    '- Narration: natural spoken English for TTS (teens/20s audience)\n'
+                    '- Scene: English description for AI image generation (20-30 words)\n'
+                    '- Mood: single English keyword (e.g. tense, mysterious, triumphant, somber)\n'
+                    '- Keep the same number of paragraphs\n'
+                    '- Output ONLY JSON, no commentary or code block\n\n'
+                    'Korean script:\n{script}\n\n'
+                    'Output format:\n'
+                    '{"paragraphs": [{"narration": "...", "scene": "...", "mood": "..."}]}'
                 ),
             },
             'scene_direction': {

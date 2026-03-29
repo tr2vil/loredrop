@@ -41,6 +41,7 @@ class ScriptParagraph(db.Model):
     paragraph_index = db.Column(db.Integer, nullable=False)
     text = db.Column(db.Text, nullable=False)
     scene_direction = db.Column(db.Text)
+    mood = db.Column(db.String(100))
     audio_path = db.Column(db.String(500))
     audio_duration = db.Column(db.Float)
     image_path = db.Column(db.String(500))
@@ -57,6 +58,7 @@ class ScriptParagraph(db.Model):
             'paragraph_index': self.paragraph_index,
             'text': self.text,
             'scene_direction': self.scene_direction,
+            'mood': self.mood,
             'audio_path': self.audio_path,
             'audio_duration': self.audio_duration,
             'image_path': self.image_path,
