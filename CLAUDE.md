@@ -46,9 +46,10 @@ ngrok http 5678
 
 ### 고정 도메인 사용 (URL 변경 방지)
 ```bash
-ngrok http 5678 --domain=<your-domain>.ngrok-free.dev
+ngrok http 5678 --url=nonrepudiative-enriqueta-sparkily.ngrok-free.dev
 ```
-고정 도메인은 https://dashboard.ngrok.com/domains 에서 확인.
+고정 도메인: `nonrepudiative-enriqueta-sparkily.ngrok-free.dev`
+관리: https://dashboard.ngrok.com/domains
 
 ### ngrok 실행 후 필수 작업
 1. 터미널에 표시된 `https://xxxx.ngrok-free.app` URL 복사
@@ -63,4 +64,5 @@ ngrok http 5678 --domain=<your-domain>.ngrok-free.dev
 ## 서비스 접속
 - App: http://localhost:8000
 - n8n: http://localhost:5678
+- n8n (외부): https://nonrepudiative-enriqueta-sparkily.ngrok-free.dev
 - ngrok 대시보드: http://localhost:4040
