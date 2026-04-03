@@ -39,11 +39,34 @@ $(document).ready(function() {
                     $num.attr('class', 'step-number ' + (statusNumClass[step.status] || statusNumClass['pending']));
                     $num.html(step.status === 'pending' ? stepIdx : (statusIcons[step.status] || stepIdx));
 
-                    // Update result text
+                    // Update result text & progress
                     $row.find('.step-result-text').remove();
-                    if (step.status === 'completed' && step.result_data) {
+                    $row.find('.step-progress-bar').remove();
+
+                    if (step.status === 'running' && data.step_progress && data.step_progress[step.step_name]) {
+                        var prog = data.step_progress[step.step_name];
+                        var current = parseInt(prog.current) || 0;
+                        var total = parseInt(prog.total) || 1;
+                        var pct = Math.round((current / total) * 100);
+                        var label = prog.current_label || '';
+                        $row.find('.step-label').parent().append(
+                            '<div class="step-progress-bar mt-2" style="max-width: 320px;">' +
+                            '  <div class="d-flex justify-content-between small text-muted mb-1">' +
+                            '    <span>Generating ' + label + '...</span>' +
+                            '    <span>' + current + ' / ' + total + '</span>' +
+                            '  </div>' +
+                            '  <div class="progress" style="height: 6px;">' +
+                            '    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: ' + pct + '%;"></div>' +
+                            '  </div>' +
+                            '</div>'
+                        );
+                    } else if (step.status === 'completed' && step.result_data) {
                         var txt = '';
-                        if (step.result_data.word_count) {
+                        if (step.result_data.total_duration) {
+                            txt = step.result_data.paragraphs_processed + ' paragraphs · ' +
+                                  step.result_data.total_duration + 's · ' +
+                                  step.result_data.total_characters + ' chars';
+                        } else if (step.result_data.word_count) {
                             txt = step.result_data.word_count + ' chars · ' + step.result_data.paragraphs + ' paragraphs';
                         } else if (step.result_data.message) {
                             txt = step.result_data.message;

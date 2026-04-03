@@ -110,12 +110,20 @@ def get_status(run_id):
     run = PipelineRun.query.get_or_404(run_id)
     steps = PipelineStep.query.filter_by(run_id=run_id).order_by(PipelineStep.id).all()
     logs = redis_client.lrange(f'pipeline:run:{run_id}:log', 0, -1)
+
+    # Include step-level progress (e.g., TTS paragraph progress)
+    step_progress = {}
+    tts_prog = redis_client.hgetall(f'pipeline:run:{run_id}:tts_progress')
+    if tts_prog:
+        step_progress['tts_completed'] = tts_prog
+
     return jsonify({
         'status': run.status,
         'current_step': run.current_step,
         'auto_mode': run.auto_mode,
         'steps': [s.to_dict() for s in steps],
         'logs': logs,
+        'step_progress': step_progress,
     })
 
 
