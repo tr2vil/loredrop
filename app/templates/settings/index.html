@@ -36,42 +36,110 @@
         <div class="card stat-card">
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Korean Voice ID</label>
-                        <input type="text" class="form-control settings-input" data-section="tts" data-key="ko_voice_id">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">English Voice ID</label>
-                        <input type="text" class="form-control settings-input" data-section="tts" data-key="en_voice_id">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Model</label>
-                        <select class="form-select settings-input" data-section="tts" data-key="model_id">
-                            <option value="eleven_multilingual_v2">eleven_multilingual_v2</option>
-                            <option value="eleven_v3">eleven_v3</option>
-                            <option value="eleven_flash_v2_5">eleven_flash_v2_5</option>
-                            <option value="eleven_monolingual_v1">eleven_monolingual_v1</option>
+                    <!-- Provider Selector -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold">TTS Provider</label>
+                        <select class="form-select settings-input" data-section="tts" data-key="provider" id="tts-provider-select">
+                            <option value="edge_tts">Edge TTS (Free, no API key)</option>
+                            <option value="elevenlabs">ElevenLabs (API key required)</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Speed <span class="text-muted fw-normal" id="tts-speed-val">1.0</span></label>
-                        <input type="range" class="form-range settings-input" data-section="tts" data-key="speed"
-                               min="0.5" max="2.0" step="0.1" value="1.0">
+
+                    <!-- Edge TTS Settings -->
+                    <div class="col-12 tts-provider-group" data-provider="edge_tts">
+                        <div class="alert alert-success py-2 mb-3">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Edge TTS is free with no usage limits. Powered by Microsoft Edge's Read Aloud engine.
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Voice</label>
+                                <select class="form-select settings-input" data-section="tts" data-key="edge_voice">
+                                    <optgroup label="Male (US)">
+                                        <option value="en-US-GuyNeural">Guy (deep, narration)</option>
+                                        <option value="en-US-ChristopherNeural">Christopher (warm)</option>
+                                        <option value="en-US-AndrewMultilingualNeural">Andrew (natural)</option>
+                                        <option value="en-US-EricNeural">Eric (clear)</option>
+                                    </optgroup>
+                                    <optgroup label="Female (US)">
+                                        <option value="en-US-AriaNeural">Aria (clear narrator)</option>
+                                        <option value="en-US-JennyNeural">Jenny (versatile)</option>
+                                        <option value="en-US-MichelleNeural">Michelle (warm)</option>
+                                    </optgroup>
+                                    <optgroup label="Male (UK)">
+                                        <option value="en-GB-RyanNeural">Ryan (British)</option>
+                                    </optgroup>
+                                    <optgroup label="Female (UK)">
+                                        <option value="en-GB-SoniaNeural">Sonia (British)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Rate</label>
+                                <select class="form-select settings-input" data-section="tts" data-key="edge_rate">
+                                    <option value="-30%">Slow (-30%)</option>
+                                    <option value="-20%">Slower (-20%)</option>
+                                    <option value="-10%">Slightly slow (-10%)</option>
+                                    <option value="+0%" selected>Normal</option>
+                                    <option value="+10%">Slightly fast (+10%)</option>
+                                    <option value="+20%">Faster (+20%)</option>
+                                    <option value="+30%">Fast (+30%)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Pitch</label>
+                                <select class="form-select settings-input" data-section="tts" data-key="edge_pitch">
+                                    <option value="-10Hz">Lower (-10Hz)</option>
+                                    <option value="-5Hz">Slightly lower (-5Hz)</option>
+                                    <option value="+0Hz" selected>Normal</option>
+                                    <option value="+5Hz">Slightly higher (+5Hz)</option>
+                                    <option value="+10Hz">Higher (+10Hz)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Stability <span class="text-muted fw-normal" id="tts-stability-val">0.5</span></label>
-                        <input type="range" class="form-range settings-input" data-section="tts" data-key="stability"
-                               min="0" max="1" step="0.05" value="0.5">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Similarity <span class="text-muted fw-normal" id="tts-similarity-val">0.75</span></label>
-                        <input type="range" class="form-range settings-input" data-section="tts" data-key="similarity"
-                               min="0" max="1" step="0.05" value="0.75">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Style <span class="text-muted fw-normal" id="tts-style-val">0.0</span></label>
-                        <input type="range" class="form-range settings-input" data-section="tts" data-key="style"
-                               min="0" max="1" step="0.05" value="0.0">
+
+                    <!-- ElevenLabs Settings -->
+                    <div class="col-12 tts-provider-group d-none" data-provider="elevenlabs">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Korean Voice ID</label>
+                                <input type="text" class="form-control settings-input" data-section="tts" data-key="ko_voice_id">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">English Voice ID</label>
+                                <input type="text" class="form-control settings-input" data-section="tts" data-key="en_voice_id">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Model</label>
+                                <select class="form-select settings-input" data-section="tts" data-key="model_id">
+                                    <option value="eleven_multilingual_v2">eleven_multilingual_v2</option>
+                                    <option value="eleven_v3">eleven_v3</option>
+                                    <option value="eleven_flash_v2_5">eleven_flash_v2_5</option>
+                                    <option value="eleven_monolingual_v1">eleven_monolingual_v1</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Speed <span class="text-muted fw-normal" id="tts-speed-val">1.0</span></label>
+                                <input type="range" class="form-range settings-input" data-section="tts" data-key="speed"
+                                       min="0.5" max="2.0" step="0.1" value="1.0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Stability <span class="text-muted fw-normal" id="tts-stability-val">0.5</span></label>
+                                <input type="range" class="form-range settings-input" data-section="tts" data-key="stability"
+                                       min="0" max="1" step="0.05" value="0.5">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Similarity <span class="text-muted fw-normal" id="tts-similarity-val">0.75</span></label>
+                                <input type="range" class="form-range settings-input" data-section="tts" data-key="similarity"
+                                       min="0" max="1" step="0.05" value="0.75">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Style <span class="text-muted fw-normal" id="tts-style-val">0.0</span></label>
+                                <input type="range" class="form-range settings-input" data-section="tts" data-key="style"
+                                       min="0" max="1" step="0.05" value="0.0">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="mt-4 d-flex gap-2">
@@ -265,11 +333,58 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
+    // TTS Provider toggle
+    function toggleTtsProvider(provider) {
+        $('.tts-provider-group').addClass('d-none');
+        $('.tts-provider-group[data-provider="' + provider + '"]').removeClass('d-none');
+    }
+    $('#tts-provider-select').on('change', function() {
+        toggleTtsProvider($(this).val());
+    });
+
     // Slider value display
     $('input[type="range"]').on('input', function() {
         var key = $(this).data('key');
         var section = $(this).data('section');
         $('#' + section + '-' + key + '-val').text($(this).val());
+    });
+
+    // Test Connection
+    $('.btn-test-settings').on('click', function() {
+        var section = $(this).data('section');
+        if (section !== 'tts') {
+            showToast('Test not implemented for this section yet.', 'info');
+            return;
+        }
+        // Collect current UI values and send them to the test endpoint
+        var formData = {};
+        $('.settings-input[data-section="tts"]').each(function() {
+            var key = $(this).data('key');
+            if (key) formData[key] = $(this).val();
+        });
+        var $btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Testing...');
+        $.ajax({
+            url: '/settings/api/tts/test',
+            method: 'POST',
+            data: JSON.stringify(formData),
+            success: function(res) {
+                if (res.ok) {
+                    // Play the test audio
+                    var audio = new Audio('data:audio/mpeg;base64,' + res.audio_b64);
+                    audio.play();
+                    showToast('TTS works! (' + res.provider + ', ' + Math.round(res.size / 1024) + ' KB)', 'success');
+                } else {
+                    showToast('Test failed: ' + res.error, 'danger');
+                }
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Connection failed.';
+                showToast('Test failed: ' + msg, 'danger');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="bi bi-play me-1"></i> Test Connection');
+            }
+        });
     });
 
     // Password toggle
@@ -320,6 +435,10 @@ $(document).ready(function() {
                     $el.val(data[key]);
                 }
             });
+            // Toggle TTS provider panel after loading
+            if (section === 'tts' && data.provider) {
+                toggleTtsProvider(data.provider);
+            }
         });
     });
 });

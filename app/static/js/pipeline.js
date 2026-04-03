@@ -93,9 +93,10 @@ $(document).ready(function() {
                         }
                         $actions.append('<i class="bi bi-check-lg text-success"></i>');
 
-                        // Auto-load scripts when completed
+                        // Auto-load scripts/TTS when completed
                         if (step.step_name === 'script_generated' && !koLoaded) loadKoScript();
                         if (step.step_name === 'script_translated' && !enLoaded) loadEnScript();
+                        if (step.step_name === 'tts_completed' && !ttsLoaded) loadTtsResults();
                     } else if (step.status === 'pending' && prevCompleted) {
                         $actions.append(
                             '<button class="btn btn-sm btn-outline-primary btn-execute-step" data-run-id="' + RUN_ID + '" data-step="' + step.step_name + '">' +
@@ -139,6 +140,8 @@ $(document).ready(function() {
     // ─── Toggle result panels ───
     var koLoaded = false, enLoaded = false;
 
+    var ttsLoaded = false;
+
     $(document).on('click', '.btn-toggle-result', function(e) {
         e.stopPropagation();
         var step = $(this).data('step');
@@ -147,6 +150,7 @@ $(document).ready(function() {
 
         if (step === 'script_generated' && !koLoaded) loadKoScript();
         if (step === 'script_translated' && !enLoaded) loadEnScript();
+        if (step === 'tts_completed' && !ttsLoaded) loadTtsResults();
     });
 
     // ─── KO Script (structured paragraphs) ───
@@ -234,7 +238,7 @@ $(document).ready(function() {
         });
     });
 
-    // ─── EN Script (structured paragraphs) ───
+    // ─── EN Script (structured paragraphs + per-paragraph TTS) ───
     function loadEnScript() {
         $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(data) {
             enLoaded = true;
@@ -244,8 +248,32 @@ $(document).ready(function() {
                 var words = (p.text || '').split(/\s+/).filter(function(w) { return w; }).length;
                 totalWords += words;
                 var moodBadge = p.mood ? '<span class="badge bg-' + getMoodColor(p.mood) + ' bg-opacity-10 text-' + getMoodColor(p.mood) + '">' + p.mood + '</span>' : '';
+
+                // Audio controls: show player if audio exists, otherwise show generate button
+                var audioHtml = '';
+                if (p.audio_path) {
+                    var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + p.paragraph_index + '.mp3';
+                    audioHtml =
+                        '<div class="en-para-audio mt-1 d-flex align-items-center gap-2">' +
+                        '  <audio controls preload="none" src="' + audioUrl + '" style="height:32px; flex-grow:1;"></audio>' +
+                        '  <a href="' + audioUrl + '/download" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Download">' +
+                        '    <i class="bi bi-download"></i>' +
+                        '  </a>' +
+                        '  <button class="btn btn-sm btn-outline-warning btn-para-tts py-0 px-1" data-para-id="' + p.id + '" title="Regenerate TTS">' +
+                        '    <i class="bi bi-arrow-clockwise"></i>' +
+                        '  </button>' +
+                        '</div>';
+                } else {
+                    audioHtml =
+                        '<div class="en-para-audio mt-1">' +
+                        '  <button class="btn btn-sm btn-outline-primary btn-para-tts" data-para-id="' + p.id + '">' +
+                        '    <i class="bi bi-mic me-1"></i>Generate TTS' +
+                        '  </button>' +
+                        '</div>';
+                }
+
                 $container.append(
-                    '<div class="card mb-2 en-para-card" data-id="' + p.id + '">' +
+                    '<div class="card mb-2 en-para-card" data-id="' + p.id + '" data-para-index="' + p.paragraph_index + '">' +
                     '  <div class="card-body p-2">' +
                     '    <div class="d-flex justify-content-between align-items-center mb-1">' +
                     '      <span class="fw-semibold small text-muted">P' + (i + 1) + '</span>' +
@@ -264,6 +292,7 @@ $(document).ready(function() {
                     '               value="' + (p.mood || '').replace(/"/g, '&quot;') + '" style="font-size: 0.8rem;">' +
                     '      </div>' +
                     '    </div>' +
+                    audioHtml +
                     '  </div>' +
                     '</div>'
                 );
@@ -274,6 +303,43 @@ $(document).ready(function() {
             $('#en-paragraphs-container').html('<p class="text-muted small text-center py-3">Not generated yet.</p>');
         });
     }
+
+    // ─── Per-paragraph TTS generation ───
+    $(document).on('click', '.btn-para-tts', function() {
+        var $btn = $(this);
+        var paraId = $btn.data('para-id');
+        var $card = $btn.closest('.en-para-card');
+        var paraIndex = $card.data('para-index');
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span>');
+
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/tts/paragraph/' + paraId,
+            method: 'POST',
+            data: '{}',
+            success: function(result) {
+                var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + result.paragraph_index + '.mp3';
+                var $audioDiv = $card.find('.en-para-audio');
+                $audioDiv.html(
+                    '<div class="d-flex align-items-center gap-2">' +
+                    '  <audio controls preload="none" src="' + audioUrl + '?t=' + Date.now() + '" style="height:32px; flex-grow:1;"></audio>' +
+                    '  <a href="' + audioUrl + '/download" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Download">' +
+                    '    <i class="bi bi-download"></i>' +
+                    '  </a>' +
+                    '  <button class="btn btn-sm btn-outline-warning btn-para-tts py-0 px-1" data-para-id="' + paraId + '" title="Regenerate TTS">' +
+                    '    <i class="bi bi-arrow-clockwise"></i>' +
+                    '  </button>' +
+                    '</div>'
+                );
+                showToast('TTS generated for P' + result.paragraph_index + ' (' + result.audio_duration + 's)', 'success');
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'TTS generation failed.';
+                showToast(msg, 'danger');
+                $btn.prop('disabled', false).html('<i class="bi bi-mic me-1"></i>Generate TTS');
+            }
+        });
+    });
 
     // Track EN changes
     $(document).on('input', '.en-para-text, .en-para-scene, .en-para-mood', function() {
@@ -304,6 +370,50 @@ $(document).ready(function() {
                 $btn.prop('disabled', false).removeClass('btn-warning').addClass('btn-primary').html('<i class="bi bi-check-lg me-1"></i>Save');
             },
             error: function() { showToast('Failed to save.', 'danger'); $btn.prop('disabled', false); }
+        });
+    });
+
+    // ─── TTS results panel (audio players + download) ───
+    function loadTtsResults() {
+        $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(data) {
+            ttsLoaded = true;
+            var $list = $('#tts-player-list').empty();
+            var hasAudio = false;
+            (data.paragraphs || []).forEach(function(p) {
+                if (!p.audio_path) return;
+                hasAudio = true;
+                var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + p.paragraph_index + '.mp3';
+                $list.append(
+                    '<div class="d-flex align-items-center gap-2 mb-2">' +
+                    '  <span class="fw-semibold small text-muted" style="width:30px;">P' + p.paragraph_index + '</span>' +
+                    '  <audio controls preload="none" src="' + audioUrl + '" style="height:32px; flex-grow:1;"></audio>' +
+                    '  <span class="text-muted small" style="width:40px;">' + (p.audio_duration ? p.audio_duration.toFixed(1) + 's' : '') + '</span>' +
+                    '  <a href="' + audioUrl + '/download" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Download">' +
+                    '    <i class="bi bi-download"></i>' +
+                    '  </a>' +
+                    '</div>'
+                );
+            });
+            if (hasAudio) {
+                $('#btn-download-all-audio').show();
+            } else {
+                $list.html('<p class="text-muted small">No audio files generated yet.</p>');
+            }
+        });
+    }
+
+    // Download all audio files one by one
+    $('#btn-download-all-audio').on('click', function() {
+        $('#tts-player-list a[href$="/download"]').each(function(i) {
+            var $link = $(this);
+            setTimeout(function() {
+                var a = document.createElement('a');
+                a.href = $link.attr('href');
+                a.download = '';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }, i * 300);
         });
     });
 

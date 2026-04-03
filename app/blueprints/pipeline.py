@@ -1,5 +1,6 @@
+import os
 from datetime import datetime
-from flask import Blueprint, render_template, jsonify, request, redirect, url_for, current_app
+from flask import Blueprint, render_template, jsonify, request, redirect, url_for, current_app, send_file
 from ..extensions import db, redis_client
 from ..models.topic import SelectedTopic
 from ..models.script import Script, ScriptParagraph
@@ -188,3 +189,44 @@ def _split_paragraphs(text):
         if block:
             paragraphs.append(block)
     return paragraphs if paragraphs else [text.strip()]
+
+
+# ─── Per-paragraph TTS API ───
+
+@pipeline_bp.route('/api/<int:run_id>/tts/paragraph/<int:paragraph_id>', methods=['POST'])
+def generate_paragraph_tts(run_id, paragraph_id):
+    """Generate TTS for a single paragraph."""
+    run = PipelineRun.query.get_or_404(run_id)
+    try:
+        from ..services.media.tts_service import generate_single_tts
+        result = generate_single_tts(paragraph_id, run_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── Audio file serving & download ───
+
+@pipeline_bp.route('/api/<int:run_id>/audio/<path:filename>')
+def serve_audio(run_id, filename):
+    """Serve an audio file for playback."""
+    audio_dir = os.path.join(
+        current_app.config['OUTPUT_DIR'], 'audio', f'run_{run_id}'
+    )
+    filepath = os.path.join(audio_dir, filename)
+    if not os.path.isfile(filepath):
+        return jsonify({'error': 'File not found'}), 404
+    return send_file(filepath, mimetype='audio/mpeg')
+
+
+@pipeline_bp.route('/api/<int:run_id>/audio/<path:filename>/download')
+def download_audio(run_id, filename):
+    """Download an audio file."""
+    audio_dir = os.path.join(
+        current_app.config['OUTPUT_DIR'], 'audio', f'run_{run_id}'
+    )
+    filepath = os.path.join(audio_dir, filename)
+    if not os.path.isfile(filepath):
+        return jsonify({'error': 'File not found'}), 404
+    return send_file(filepath, mimetype='audio/mpeg', as_attachment=True,
+                     download_name=filename)

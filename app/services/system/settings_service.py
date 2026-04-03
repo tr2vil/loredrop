@@ -5,6 +5,7 @@ VALID_SECTIONS = ['tts', 'midjourney', 'general', 'api_keys']
 # Default values for each settings section
 DEFAULTS = {
     'tts': {
+        'provider': 'edge_tts',
         'ko_voice_id': '',
         'en_voice_id': '',
         'model_id': 'eleven_multilingual_v2',
@@ -12,6 +13,9 @@ DEFAULTS = {
         'similarity': '0.75',
         'style': '0.0',
         'speed': '1.0',
+        'edge_voice': 'en-US-GuyNeural',
+        'edge_rate': '+0%',
+        'edge_pitch': '+0Hz',
     },
     'midjourney': {
         'style_preset': 'cinematic dark moody historical',
