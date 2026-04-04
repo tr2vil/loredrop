@@ -7,31 +7,50 @@ from . import leonardo_client
 
 
 def _build_prompt(scene_direction, mood, leo_settings):
-    """Build a structured prompt from scene direction, mood, and channel-wide style settings.
+    """Build a structured prompt optimized for AI image generation.
 
-    Final structure:
-      {art_style} of {scene_direction}, {mood} atmosphere,
-      {color_palette}, {rendering_style}, {consistent_elements}
+    Structure (order matters for weight):
+      1. Art style + scene (subject, action, setting) — core visual
+      2. Lighting & mood — atmosphere
+      3. Color palette — color guidance
+      4. Rendering style — technique
+      5. Consistent elements — channel identity
+      6. Quality tokens — output quality boost
     """
-    parts = []
+    sections = []
 
     art_style = leo_settings.get('art_style', '').strip()
     scene = scene_direction.strip()
 
+    # 1. Core visual: art style + scene description
     if art_style and scene:
-        parts.append(f'{art_style} of {scene}')
+        sections.append(f'{art_style}, {scene}')
     elif scene:
-        parts.append(scene)
+        sections.append(scene)
 
+    # 2. Mood/atmosphere
     if mood and mood.strip():
-        parts.append(f'{mood.strip()} atmosphere')
+        sections.append(f'{mood.strip()} atmosphere, {mood.strip()} lighting')
 
-    for key in ('color_palette', 'rendering_style', 'consistent_elements'):
-        val = leo_settings.get(key, '').strip()
-        if val:
-            parts.append(val)
+    # 3. Color palette
+    color = leo_settings.get('color_palette', '').strip()
+    if color:
+        sections.append(color)
 
-    return ', '.join(parts)
+    # 4. Rendering style
+    rendering = leo_settings.get('rendering_style', '').strip()
+    if rendering:
+        sections.append(rendering)
+
+    # 5. Consistent elements (channel identity)
+    elements = leo_settings.get('consistent_elements', '').strip()
+    if elements:
+        sections.append(elements)
+
+    # 6. Quality tokens
+    sections.append('masterpiece, best quality, highly detailed')
+
+    return ', '.join(sections)
 
 
 def generate_images(selected_topic_id, run_id, log_fn=None):
@@ -62,13 +81,13 @@ def generate_images(selected_topic_id, run_id, log_fn=None):
     if preset_style == 'NONE':
         preset_style = None
     negative_prompt = leo_settings.get('negative_prompt', '') or None
-    init_image_id = leo_settings.get('style_ref_image_id', '') or None
-    init_strength = float(leo_settings.get('style_ref_strength', '0.5')) if init_image_id else None
+    style_ref_image_id = leo_settings.get('style_ref_image_id', '') or None
+    style_ref_strength_type = leo_settings.get('style_ref_strength_type', 'Mid') if style_ref_image_id else None
 
     if log_fn:
         log_fn(f'Images: Starting generation for {len(paragraphs)} scenes')
-        if init_image_id:
-            log_fn(f'Images: Style reference active (strength={init_strength})')
+        if style_ref_image_id:
+            log_fn(f'Images: Style reference active (strength={style_ref_strength_type})')
 
     # 3. Initialize progress tracking
     progress_key = f'pipeline:run:{run_id}:images_progress'
@@ -109,8 +128,8 @@ def generate_images(selected_topic_id, run_id, log_fn=None):
             model_id=model_id,
             preset_style=preset_style,
             negative_prompt=negative_prompt,
-            init_image_id=init_image_id,
-            init_strength=init_strength,
+            style_ref_image_id=style_ref_image_id,
+            style_ref_strength_type=style_ref_strength_type,
         )
 
         if log_fn:
@@ -183,8 +202,8 @@ def generate_single_scene(paragraph_id, run_id):
     if preset_style == 'NONE':
         preset_style = None
     negative_prompt = leo_settings.get('negative_prompt', '') or None
-    init_image_id = leo_settings.get('style_ref_image_id', '') or None
-    init_strength = float(leo_settings.get('style_ref_strength', '0.5')) if init_image_id else None
+    style_ref_image_id = leo_settings.get('style_ref_image_id', '') or None
+    style_ref_strength_type = leo_settings.get('style_ref_strength_type', 'Mid') if style_ref_image_id else None
 
     generation_id = leonardo_client.generate_images(
         prompt=prompt,
@@ -194,8 +213,8 @@ def generate_single_scene(paragraph_id, run_id):
         model_id=model_id,
         preset_style=preset_style,
         negative_prompt=negative_prompt,
-        init_image_id=init_image_id,
-        init_strength=init_strength,
+        style_ref_image_id=style_ref_image_id,
+        style_ref_strength_type=style_ref_strength_type,
     )
 
     image_urls = leonardo_client.wait_for_generation(generation_id)

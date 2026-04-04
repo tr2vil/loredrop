@@ -5,6 +5,14 @@ from flask import current_app
 
 BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1'
 
+# Phoenix/Lucid models use imagePrompts for style ref instead of controlnets
+_IMAGEPROMPT_MODELS = {
+    'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3',  # Phoenix 1.0
+    '6b645e3a-d64f-4341-a6d8-7a3690fbf042',  # Phoenix 0.9
+    '7b592283-e8a7-4c5a-9ba6-d18c31f258b9',  # Lucid Origin
+    '05ce0082-2d80-4a2d-8653-4d1c85e2418e',  # Lucid Realism
+}
+
 
 def _headers():
     api_key = current_app.config.get('LEONARDO_API_KEY', '')
@@ -61,26 +69,39 @@ def download_image_from_url(url):
 def generate_images(prompt, num_images=4, width=1024, height=576,
                     model_id=None, preset_style=None, negative_prompt=None,
                     alchemy=True, guidance_scale=7,
-                    init_image_id=None, init_strength=None):
-    """Start an image generation job. Returns generation_id."""
+                    style_ref_image_id=None, style_ref_strength_type=None):
+    """Start an image generation job. Returns generation_id.
+
+    style_ref_image_id: Leonardo init image ID for style reference (controlnet).
+    style_ref_strength_type: 'Low', 'Mid', 'High', 'Ultra', or 'Max'.
+    """
     payload = {
         'prompt': prompt,
         'num_images': num_images,
         'width': width,
         'height': height,
         'alchemy': alchemy,
-        'guidance_scale': guidance_scale,
     }
+    if not alchemy:
+        payload['guidance_scale'] = guidance_scale
     if model_id:
         payload['modelId'] = model_id
     if preset_style:
         payload['presetStyle'] = preset_style
     if negative_prompt:
         payload['negative_prompt'] = negative_prompt
-    if init_image_id:
-        payload['init_image_id'] = init_image_id
-        if init_strength is not None:
-            payload['init_strength'] = float(init_strength)
+    if style_ref_image_id:
+        if model_id and model_id in _IMAGEPROMPT_MODELS:
+            # Phoenix/Lucid: use imagePrompts (string array)
+            payload['imagePrompts'] = [style_ref_image_id]
+        else:
+            # XL/FLUX: use controlnets with Style Reference preprocessor
+            payload['controlnets'] = [{
+                'initImageId': style_ref_image_id,
+                'initImageType': 'UPLOADED',
+                'preprocessorId': 67,
+                'strengthType': style_ref_strength_type or 'Mid',
+            }]
 
     resp = requests.post(f'{BASE_URL}/generations', headers=_headers(), json=payload, timeout=30)
 

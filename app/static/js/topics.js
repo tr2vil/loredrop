@@ -23,7 +23,62 @@ $(document).ready(function() {
         });
     }
 
-    function formatDescription(desc) {
+    function scoreBadge(score) {
+        if (score == null) return '<span class="text-muted">-</span>';
+        var s = parseFloat(score);
+        var cls = 'bg-success';
+        if (s < 5) cls = 'bg-danger';
+        else if (s < 8) cls = 'bg-warning text-dark';
+        return '<span class="badge ' + cls + '" style="min-width:38px;">' + s.toFixed(1) + '</span>';
+    }
+
+    function formatValidationDetails(detailsStr) {
+        if (!detailsStr) return '';
+        var details;
+        try { details = JSON.parse(detailsStr); } catch(e) { return ''; }
+        if (!details || typeof details !== 'object') return '';
+
+        var agentLabels = {
+            'history_verification': {icon: 'bi-book', label: 'History', color: 'primary'},
+            'channel_fit': {icon: 'bi-bullseye', label: 'Channel Fit', color: 'success'},
+            'audience_appeal': {icon: 'bi-people', label: 'Audience', color: 'warning'}
+        };
+
+        var html = '<div class="mt-2 pt-2 border-top">';
+        html += '<small class="fw-bold text-muted d-block mb-2"><i class="bi bi-robot me-1"></i>Agent Evaluation</small>';
+
+        for (var key in agentLabels) {
+            var d = details[key];
+            if (!d) continue;
+            var cfg = agentLabels[key];
+            var score = d.score != null ? parseFloat(d.score).toFixed(1) : '-';
+
+            html += '<div class="mb-2 p-2 rounded" style="background:rgba(0,0,0,0.03);">';
+            html += '<div class="d-flex align-items-center gap-2 mb-1">';
+            html += '<i class="bi ' + cfg.icon + ' text-' + cfg.color + '"></i>';
+            html += '<strong class="small">' + cfg.label + '</strong>';
+            html += scoreBadge(d.score);
+            html += '</div>';
+            if (d.reasoning) {
+                html += '<div class="small text-muted">' + d.reasoning + '</div>';
+            }
+            if (d.strengths && d.strengths.length) {
+                html += '<div class="small text-success mt-1">';
+                d.strengths.forEach(function(s) { html += '<i class="bi bi-check-circle me-1"></i>' + s + ' '; });
+                html += '</div>';
+            }
+            if (d.issues && d.issues.length) {
+                html += '<div class="small text-danger mt-1">';
+                d.issues.forEach(function(s) { html += '<i class="bi bi-exclamation-circle me-1"></i>' + s + ' '; });
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function formatDescription(desc, validationDetails) {
         if (!desc) return '<span class="text-muted">No description</span>';
         var html = '';
         desc.split('\n').forEach(function(line) {
@@ -32,7 +87,7 @@ $(document).ready(function() {
             if (line.startsWith('EN:')) {
                 html += '<div class="mb-1"><i class="bi bi-translate me-1 text-primary"></i><em>' + line.substring(3).trim() + '</em></div>';
             } else if (line.startsWith('Why:')) {
-                html += '<div class="mb-1">💡 ' + line.substring(4).trim() + '</div>';
+                html += '<div class="mb-1">&#x1f4a1; ' + line.substring(4).trim() + '</div>';
             } else if (line.startsWith('Points:')) {
                 html += '<div class="mb-1"><i class="bi bi-list-check me-1 text-success"></i>' + line.substring(7).trim() + '</div>';
             } else if (line.startsWith('Keywords:')) {
@@ -47,6 +102,7 @@ $(document).ready(function() {
                 html += '<div class="mb-1">' + line + '</div>';
             }
         });
+        html += formatValidationDetails(validationDetails);
         return html;
     }
 
@@ -75,7 +131,7 @@ $(document).ready(function() {
                 '</tr>' +
                 '<tr class="detail-row d-none" data-parent="' + t.id + '">' +
                 '<td colspan="6" class="bg-light px-4 py-3" style="border-top:none;">' +
-                formatDescription(t.description) +
+                formatDescription(t.description, t.validation_details) +
                 '</td>' +
                 '</tr>'
             );
@@ -88,7 +144,7 @@ $(document).ready(function() {
         $tbody.empty();
 
         if (topics.length === 0) {
-            $tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No recommended topics.</td></tr>');
+            $tbody.html('<tr><td colspan="6" class="text-center text-muted py-3">No recommended topics.</td></tr>');
             return;
         }
 
@@ -97,13 +153,14 @@ $(document).ready(function() {
                 '<tr class="topic-row" style="cursor:pointer;" data-id="' + t.id + '">' +
                 '<td>' + t.id + '</td>' +
                 '<td><i class="bi bi-chevron-right me-1 small toggle-icon"></i>' + t.title + '</td>' +
+                '<td class="text-center">' + scoreBadge(t.score_total) + '</td>' +
                 '<td><span class="badge bg-dark bg-opacity-10 text-dark">' + (t.category || '-') + '</span></td>' +
                 '<td>' + (t.batch_date || '-') + '</td>' +
                 '<td><button class="btn btn-sm btn-primary btn-select-topic" data-id="' + t.id + '" data-title="' + t.title + '" onclick="event.stopPropagation();">Select</button></td>' +
                 '</tr>' +
                 '<tr class="detail-row d-none" data-parent="' + t.id + '">' +
-                '<td colspan="5" class="bg-light px-4 py-3" style="border-top:none;">' +
-                formatDescription(t.description) +
+                '<td colspan="6" class="bg-light px-4 py-3" style="border-top:none;">' +
+                formatDescription(t.description, t.validation_details) +
                 '</td>' +
                 '</tr>'
             );
@@ -126,13 +183,13 @@ $(document).ready(function() {
 
     // Generate topics
     $('#btn-generate').on('click', function() {
-        var $btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Generating...');
+        var $btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Generating & Validating...');
         $.ajax({
             url: '/topics/generate',
             method: 'POST',
             data: '{}',
             success: function() {
-                showToast('Topics generated!', 'success');
+                showToast('Topics generated and validated!', 'success');
                 loadTopics();
             },
             error: function(xhr) {
