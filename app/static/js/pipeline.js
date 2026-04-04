@@ -18,6 +18,10 @@ $(document).ready(function() {
     var lastLogCount = 0;
     var scriptLoaded = false;
 
+    // Helper: extract URL from image data (handles both {id,url} objects and plain strings)
+    function imgUrl(item) { return typeof item === 'object' ? item.url : item; }
+    function imgId(item) { return typeof item === 'object' ? item.id : null; }
+
     // ─── Poll status ───
     function pollStatus() {
         $.getJSON('/pipeline/api/' + RUN_ID + '/status', function(data) {
@@ -39,11 +43,36 @@ $(document).ready(function() {
                     $num.attr('class', 'step-number ' + (statusNumClass[step.status] || statusNumClass['pending']));
                     $num.html(step.status === 'pending' ? stepIdx : (statusIcons[step.status] || stepIdx));
 
-                    // Update result text
+                    // Update result text & progress
                     $row.find('.step-result-text').remove();
-                    if (step.status === 'completed' && step.result_data) {
+                    $row.find('.step-progress-bar').remove();
+
+                    if (step.status === 'running' && data.step_progress && data.step_progress[step.step_name]) {
+                        var prog = data.step_progress[step.step_name];
+                        var current = parseInt(prog.current) || 0;
+                        var total = parseInt(prog.total) || 1;
+                        var pct = Math.round((current / total) * 100);
+                        var label = prog.current_label || '';
+                        $row.find('.step-label').parent().append(
+                            '<div class="step-progress-bar mt-2" style="max-width: 320px;">' +
+                            '  <div class="d-flex justify-content-between small text-muted mb-1">' +
+                            '    <span>Generating ' + label + '...</span>' +
+                            '    <span>' + current + ' / ' + total + '</span>' +
+                            '  </div>' +
+                            '  <div class="progress" style="height: 6px;">' +
+                            '    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: ' + pct + '%;"></div>' +
+                            '  </div>' +
+                            '</div>'
+                        );
+                    } else if (step.status === 'completed' && step.result_data) {
                         var txt = '';
-                        if (step.result_data.word_count) {
+                        if (step.result_data.total_duration) {
+                            txt = step.result_data.paragraphs_processed + ' paragraphs · ' +
+                                  step.result_data.total_duration + 's · ' +
+                                  step.result_data.total_characters + ' chars';
+                        } else if (step.result_data.scenes_processed !== undefined) {
+                            txt = step.result_data.scenes_processed + ' scenes processed';
+                        } else if (step.result_data.word_count) {
                             txt = step.result_data.word_count + ' chars · ' + step.result_data.paragraphs + ' paragraphs';
                         } else if (step.result_data.message) {
                             txt = step.result_data.message;
@@ -70,9 +99,17 @@ $(document).ready(function() {
                         }
                         $actions.append('<i class="bi bi-check-lg text-success"></i>');
 
-                        // Auto-load scripts when completed
+                        // Auto-load scripts/TTS when completed
                         if (step.step_name === 'script_generated' && !koLoaded) loadKoScript();
                         if (step.step_name === 'script_translated' && !enLoaded) loadEnScript();
+                        if (step.step_name === 'tts_completed' && !ttsLoaded) loadTtsResults();
+                        if (step.step_name === 'images_generated' && !imagesLoaded) {
+                            loadImageResults();
+                            // Also refresh EN script panel to show new images inline
+                            enLoaded = false;
+                            enSceneImages = {};
+                            loadEnScript();
+                        }
                     } else if (step.status === 'pending' && prevCompleted) {
                         $actions.append(
                             '<button class="btn btn-sm btn-outline-primary btn-execute-step" data-run-id="' + RUN_ID + '" data-step="' + step.step_name + '">' +
@@ -116,6 +153,9 @@ $(document).ready(function() {
     // ─── Toggle result panels ───
     var koLoaded = false, enLoaded = false;
 
+    var ttsLoaded = false;
+    var imagesLoaded = false;
+
     $(document).on('click', '.btn-toggle-result', function(e) {
         e.stopPropagation();
         var step = $(this).data('step');
@@ -124,6 +164,8 @@ $(document).ready(function() {
 
         if (step === 'script_generated' && !koLoaded) loadKoScript();
         if (step === 'script_translated' && !enLoaded) loadEnScript();
+        if (step === 'tts_completed' && !ttsLoaded) loadTtsResults();
+        if (step === 'images_generated' && !imagesLoaded) loadImageResults();
     });
 
     // ─── KO Script (structured paragraphs) ───
@@ -211,8 +253,21 @@ $(document).ready(function() {
         });
     });
 
-    // ─── EN Script (structured paragraphs) ───
+    // ─── EN Script (structured paragraphs + per-paragraph TTS + Images) ───
+    var enSceneImages = {}; // scene_index -> scene image data
+
     function loadEnScript() {
+        // Load scene images first, then render paragraphs
+        $.getJSON('/pipeline/api/' + RUN_ID + '/images', function(imgData) {
+            (imgData.images || []).forEach(function(img) {
+                enSceneImages[img.scene_index] = img;
+            });
+        }).always(function() {
+            _renderEnParagraphs();
+        });
+    }
+
+    function _renderEnParagraphs() {
         $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(data) {
             enLoaded = true;
             var $container = $('#en-paragraphs-container').empty();
@@ -221,8 +276,65 @@ $(document).ready(function() {
                 var words = (p.text || '').split(/\s+/).filter(function(w) { return w; }).length;
                 totalWords += words;
                 var moodBadge = p.mood ? '<span class="badge bg-' + getMoodColor(p.mood) + ' bg-opacity-10 text-' + getMoodColor(p.mood) + '">' + p.mood + '</span>' : '';
+
+                // Audio controls
+                var audioHtml = '';
+                if (p.audio_path) {
+                    var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + p.paragraph_index + '.mp3';
+                    audioHtml =
+                        '<div class="en-para-audio d-flex align-items-center gap-2">' +
+                        '  <audio controls preload="none" src="' + audioUrl + '" style="height:32px; flex-grow:1;"></audio>' +
+                        '  <a href="' + audioUrl + '/download" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Download">' +
+                        '    <i class="bi bi-download"></i>' +
+                        '  </a>' +
+                        '  <button class="btn btn-sm btn-outline-warning btn-para-tts py-0 px-1" data-para-id="' + p.id + '" title="Regenerate TTS">' +
+                        '    <i class="bi bi-arrow-clockwise"></i>' +
+                        '  </button>' +
+                        '</div>';
+                } else {
+                    audioHtml =
+                        '<div class="en-para-audio">' +
+                        '  <button class="btn btn-sm btn-outline-primary btn-para-tts" data-para-id="' + p.id + '">' +
+                        '    <i class="bi bi-mic me-1"></i>TTS' +
+                        '  </button>' +
+                        '</div>';
+                }
+
+                // Image controls
+                var sceneImg = enSceneImages[p.paragraph_index];
+                var imageHtml = '';
+                if (sceneImg && sceneImg.image_urls && sceneImg.image_urls.length) {
+                    var thumbs = '';
+                    sceneImg.image_urls.forEach(function(item) {
+                        var url = imgUrl(item);
+                        var isSelected = (url === sceneImg.selected_url);
+                        thumbs +=
+                            '<div class="img-thumb-click' + (isSelected ? ' selected' : '') + '"' +
+                            '     data-scene-id="' + sceneImg.id + '" data-url="' + url + '"' +
+                            '     style="position:relative; cursor:pointer; border: 2px solid ' + (isSelected ? '#198754' : 'transparent') + '; border-radius: 4px; overflow:hidden;">' +
+                            '  <img src="' + url + '" style="width:64px; height:64px; object-fit:cover; display:block;">' +
+                            (isSelected ? '<span class="badge bg-success" style="position:absolute;top:0;right:0;font-size:.55rem;"><i class="bi bi-check"></i></span>' : '') +
+                            '</div>';
+                    });
+                    imageHtml =
+                        '<div class="en-para-images">' +
+                        '  <div class="d-flex align-items-center gap-1 flex-wrap">' + thumbs +
+                        '    <button class="btn btn-sm btn-outline-warning btn-para-img py-0 px-1" data-para-id="' + p.id + '" title="Regenerate Images">' +
+                        '      <i class="bi bi-arrow-clockwise"></i>' +
+                        '    </button>' +
+                        '  </div>' +
+                        '</div>';
+                } else if (p.scene_direction) {
+                    imageHtml =
+                        '<div class="en-para-images">' +
+                        '  <button class="btn btn-sm btn-outline-success btn-para-img" data-para-id="' + p.id + '">' +
+                        '    <i class="bi bi-image me-1"></i>Image' +
+                        '  </button>' +
+                        '</div>';
+                }
+
                 $container.append(
-                    '<div class="card mb-2 en-para-card" data-id="' + p.id + '">' +
+                    '<div class="card mb-2 en-para-card" data-id="' + p.id + '" data-para-index="' + p.paragraph_index + '">' +
                     '  <div class="card-body p-2">' +
                     '    <div class="d-flex justify-content-between align-items-center mb-1">' +
                     '      <span class="fw-semibold small text-muted">P' + (i + 1) + '</span>' +
@@ -230,7 +342,7 @@ $(document).ready(function() {
                     '    </div>' +
                     '    <textarea class="form-control form-control-sm en-para-text mb-1" rows="3" ' +
                     '              style="font-size: 0.88rem; line-height: 1.6;">' + (p.text || '') + '</textarea>' +
-                    '    <div class="d-flex gap-2">' +
+                    '    <div class="d-flex gap-2 mb-1">' +
                     '      <div class="flex-grow-1">' +
                     '        <input class="form-control form-control-sm en-para-scene" placeholder="Scene direction..." ' +
                     '               value="' + (p.scene_direction || '').replace(/"/g, '&quot;') + '" ' +
@@ -240,6 +352,10 @@ $(document).ready(function() {
                     '        <input class="form-control form-control-sm en-para-mood" placeholder="Mood..." ' +
                     '               value="' + (p.mood || '').replace(/"/g, '&quot;') + '" style="font-size: 0.8rem;">' +
                     '      </div>' +
+                    '    </div>' +
+                    '    <div class="d-flex gap-2 align-items-start mt-1">' +
+                    '      <div class="flex-grow-1">' + audioHtml + '</div>' +
+                    '      <div>' + imageHtml + '</div>' +
                     '    </div>' +
                     '  </div>' +
                     '</div>'
@@ -251,6 +367,70 @@ $(document).ready(function() {
             $('#en-paragraphs-container').html('<p class="text-muted small text-center py-3">Not generated yet.</p>');
         });
     }
+
+    // ─── Per-paragraph Image generation ───
+    $(document).on('click', '.btn-para-img', function() {
+        var $btn = $(this);
+        var paraId = $btn.data('para-id');
+        var $card = $btn.closest('.en-para-card');
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span>');
+
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/images/paragraph/' + paraId,
+            method: 'POST',
+            data: '{}',
+            success: function(result) {
+                showToast('Images generated for P' + $card.data('para-index') + '!', 'success');
+                // Refresh scene images cache and re-render
+                enSceneImages[result.scene_index] = result;
+                enLoaded = false;
+                loadEnScript();
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Image generation failed.';
+                showToast(msg, 'danger');
+                $btn.prop('disabled', false).html('<i class="bi bi-image me-1"></i>Image');
+            }
+        });
+    });
+
+    // ─── Per-paragraph TTS generation ───
+    $(document).on('click', '.btn-para-tts', function() {
+        var $btn = $(this);
+        var paraId = $btn.data('para-id');
+        var $card = $btn.closest('.en-para-card');
+        var paraIndex = $card.data('para-index');
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span>');
+
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/tts/paragraph/' + paraId,
+            method: 'POST',
+            data: '{}',
+            success: function(result) {
+                var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + result.paragraph_index + '.mp3';
+                var $audioDiv = $card.find('.en-para-audio');
+                $audioDiv.html(
+                    '<div class="d-flex align-items-center gap-2">' +
+                    '  <audio controls preload="none" src="' + audioUrl + '?t=' + Date.now() + '" style="height:32px; flex-grow:1;"></audio>' +
+                    '  <a href="' + audioUrl + '/download" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Download">' +
+                    '    <i class="bi bi-download"></i>' +
+                    '  </a>' +
+                    '  <button class="btn btn-sm btn-outline-warning btn-para-tts py-0 px-1" data-para-id="' + paraId + '" title="Regenerate TTS">' +
+                    '    <i class="bi bi-arrow-clockwise"></i>' +
+                    '  </button>' +
+                    '</div>'
+                );
+                showToast('TTS generated for P' + result.paragraph_index + ' (' + result.audio_duration + 's)', 'success');
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'TTS generation failed.';
+                showToast(msg, 'danger');
+                $btn.prop('disabled', false).html('<i class="bi bi-mic me-1"></i>Generate TTS');
+            }
+        });
+    });
 
     // Track EN changes
     $(document).on('input', '.en-para-text, .en-para-scene, .en-para-mood', function() {
@@ -281,6 +461,205 @@ $(document).ready(function() {
                 $btn.prop('disabled', false).removeClass('btn-warning').addClass('btn-primary').html('<i class="bi bi-check-lg me-1"></i>Save');
             },
             error: function() { showToast('Failed to save.', 'danger'); $btn.prop('disabled', false); }
+        });
+    });
+
+    // ─── TTS results panel (audio players + download) ───
+    function loadTtsResults() {
+        $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(data) {
+            ttsLoaded = true;
+            var $list = $('#tts-player-list').empty();
+            var hasAudio = false;
+            (data.paragraphs || []).forEach(function(p) {
+                if (!p.audio_path) return;
+                hasAudio = true;
+                var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + p.paragraph_index + '.mp3';
+                $list.append(
+                    '<div class="d-flex align-items-center gap-2 mb-2">' +
+                    '  <span class="fw-semibold small text-muted" style="width:30px;">P' + p.paragraph_index + '</span>' +
+                    '  <audio controls preload="none" src="' + audioUrl + '" style="height:32px; flex-grow:1;"></audio>' +
+                    '  <span class="text-muted small" style="width:40px;">' + (p.audio_duration ? p.audio_duration.toFixed(1) + 's' : '') + '</span>' +
+                    '  <a href="' + audioUrl + '/download" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Download">' +
+                    '    <i class="bi bi-download"></i>' +
+                    '  </a>' +
+                    '</div>'
+                );
+            });
+            if (hasAudio) {
+                $('#btn-download-all-audio').show();
+            } else {
+                $list.html('<p class="text-muted small">No audio files generated yet.</p>');
+            }
+        });
+    }
+
+    // ─── Image results panel ───
+    function loadImageResults() {
+        $.getJSON('/pipeline/api/' + RUN_ID + '/images', function(data) {
+            imagesLoaded = true;
+            var $container = $('#image-scenes-container').empty();
+            var images = data.images || [];
+
+            if (!images.length) {
+                $container.html('<p class="text-muted small">No images generated yet.</p>');
+                return;
+            }
+
+            // Also load EN script to show scene direction context
+            $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(scriptData) {
+                var paraMap = {};
+                (scriptData.paragraphs || []).forEach(function(p) {
+                    paraMap[p.paragraph_index] = p;
+                });
+
+                images.forEach(function(img) {
+                    var para = paraMap[img.scene_index] || {};
+                    var sceneText = para.scene_direction || '';
+                    var selectedUrl = img.selected_url || '';
+
+                    var imagesHtml = '';
+                    (img.image_urls || []).forEach(function(item) {
+                        var url = imgUrl(item);
+                        var isSelected = (url === selectedUrl);
+                        imagesHtml +=
+                            '<div class="col-6 col-md-3">' +
+                            '  <div class="position-relative img-thumb-click' + (isSelected ? ' selected' : '') + '"' +
+                            '       data-scene-id="' + img.id + '" data-url="' + url + '"' +
+                            '       style="cursor:pointer; border: 2px solid ' + (isSelected ? '#198754' : 'transparent') + '; border-radius: 6px; overflow:hidden;">' +
+                            '    <img src="' + url + '" class="img-fluid rounded" style="aspect-ratio:9/16; object-fit:cover; width:100%;">' +
+                            (isSelected ? '<span class="badge bg-success position-absolute top-0 end-0 m-1"><i class="bi bi-check-lg"></i></span>' : '') +
+                            '  </div>' +
+                            '</div>';
+                    });
+
+                    $container.append(
+                        '<div class="card mb-3 scene-image-card" data-scene-id="' + img.id + '">' +
+                        '  <div class="card-body p-2">' +
+                        '    <div class="d-flex justify-content-between align-items-center mb-2">' +
+                        '      <span class="fw-semibold small text-muted">P' + img.scene_index + '</span>' +
+                        '      <button class="btn btn-sm btn-outline-warning btn-regen-scene py-0 px-2" ' +
+                        '              data-para-id="' + (para.id || '') + '" title="Regenerate">' +
+                        '        <i class="bi bi-arrow-clockwise me-1"></i>Regenerate' +
+                        '      </button>' +
+                        '    </div>' +
+                        '    <div class="text-muted small mb-2" style="font-size:0.78rem;">' + (sceneText || img.prompt || '') + '</div>' +
+                        '    <div class="row g-2">' + imagesHtml + '</div>' +
+                        '  </div>' +
+                        '</div>'
+                    );
+                });
+            });
+        });
+    }
+
+    // ─── Image Lightbox (click to enlarge) ───
+    var lightboxSceneId = null;
+    var lightboxUrl = null;
+
+    $(document).on('click', '.img-thumb-click', function(e) {
+        e.stopPropagation();
+        lightboxSceneId = $(this).data('scene-id');
+        lightboxUrl = $(this).data('url');
+        var sceneIndex = $(this).closest('[data-scene-id]').closest('.scene-image-card,.en-para-card').find('.text-muted.fw-semibold,.fw-semibold.small').first().text();
+        $('#lightbox-title').text(sceneIndex || 'Image');
+        $('#lightbox-img').attr('src', lightboxUrl);
+        var modal = new bootstrap.Modal(document.getElementById('imageLightbox'));
+        modal.show();
+    });
+
+    // Select from lightbox
+    $('#lightbox-select').on('click', function() {
+        if (!lightboxSceneId || !lightboxUrl) return;
+        var $btn = $(this).prop('disabled', true);
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/images/select',
+            method: 'POST',
+            data: JSON.stringify({ scene_image_id: lightboxSceneId, selected_url: lightboxUrl }),
+            success: function() {
+                showToast('Image selected!', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('imageLightbox')).hide();
+                // Refresh both panels
+                imagesLoaded = false; loadImageResults();
+                enLoaded = false; enSceneImages = {}; loadEnScript();
+            },
+            error: function(xhr) {
+                showToast(xhr.responseJSON ? xhr.responseJSON.error : 'Failed.', 'danger');
+            },
+            complete: function() { $btn.prop('disabled', false); }
+        });
+    });
+
+    // Variation from lightbox (Subtle / Strong)
+    function doVariation(strength) {
+        if (!lightboxSceneId || !lightboxUrl) return;
+        var $modal = $('#imageLightbox .modal-footer');
+        $modal.find('.btn').prop('disabled', true);
+        $modal.find('#lightbox-vary-' + strength).html(
+            '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> ' +
+            (strength === 'subtle' ? 'Subtle' : 'Strong') + '...'
+        );
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/images/vary',
+            method: 'POST',
+            data: JSON.stringify({ scene_image_id: lightboxSceneId, source_url: lightboxUrl, strength: strength }),
+            success: function(result) {
+                showToast('Variation generated! (' + strength + ')', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('imageLightbox')).hide();
+                imagesLoaded = false; loadImageResults();
+                enLoaded = false; enSceneImages = {}; loadEnScript();
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Variation failed.';
+                showToast(msg, 'danger');
+            },
+            complete: function() {
+                $modal.find('.btn').prop('disabled', false);
+                $('#lightbox-vary-subtle').html('<i class="bi bi-brush me-1"></i>Subtle');
+                $('#lightbox-vary-strong').html('<i class="bi bi-lightning me-1"></i>Strong');
+            }
+        });
+    }
+    $('#lightbox-vary-subtle').on('click', function() { doVariation('subtle'); });
+    $('#lightbox-vary-strong').on('click', function() { doVariation('strong'); });
+
+    // Regenerate single scene
+    $(document).on('click', '.btn-regen-scene', function(e) {
+        e.stopPropagation();
+        var $btn = $(this);
+        var paraId = $btn.data('para-id');
+        if (!paraId) return;
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> Generating...');
+
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/images/paragraph/' + paraId,
+            method: 'POST',
+            data: '{}',
+            success: function() {
+                showToast('Images regenerated!', 'success');
+                imagesLoaded = false;
+                loadImageResults();
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Image generation failed.';
+                showToast(msg, 'danger');
+                $btn.prop('disabled', false).html('<i class="bi bi-arrow-clockwise me-1"></i>Regenerate');
+            }
+        });
+    });
+
+    // Download all audio files one by one
+    $('#btn-download-all-audio').on('click', function() {
+        $('#tts-player-list a[href$="/download"]').each(function(i) {
+            var $link = $(this);
+            setTimeout(function() {
+                var a = document.createElement('a');
+                a.href = $link.attr('href');
+                a.download = '';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }, i * 300);
         });
     });
 

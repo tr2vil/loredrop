@@ -149,10 +149,10 @@ def register_commands(app):
                     'that tells fascinating Korean history and culture stories to international audiences.\n\n'
                     'You write structured scripts in Korean. Each paragraph includes:\n'
                     '- Narration text (Korean)\n'
-                    '- Visual scene description (English, for AI image generation)\n'
-                    '- Mood/tone tag (for TTS voice control)\n\n'
+                    '- Visual scene description (Korean, will be translated to English later)\n'
+                    '- Mood/tone keyword (Korean, e.g. 긴장감, 신비로움, 승리감)\n\n'
                     'Target: ~1 minute narration (~600-700 Korean characters total).\n'
-                    'IMPORTANT: Write narration ONLY in Korean. Do NOT include any English translation of the narration.'
+                    'IMPORTANT: Write ALL fields (narration, scene, mood) in Korean only. Do NOT use English in any field.'
                 ),
                 'user_prompt': (
                     '다음 주제에 대해 약 1분 길이의 쇼츠 대본을 작성해줘:\n'
@@ -205,21 +205,23 @@ def register_commands(app):
                     'You are a professional translator for "LoreDrop", a YouTube channel '
                     'that tells Korean stories to English-speaking audiences (teens/20s).\n\n'
                     'Translate Korean scripts into natural, engaging English.\n'
-                    'Translate ALL fields: narration, scene description, and mood keyword.\n'
+                    'You MUST translate ALL three fields for every paragraph: narration, scene, and mood.\n'
+                    'Never leave any field empty. Every paragraph must have all three fields filled.\n'
                     'IMPORTANT: Output structured JSON only. No commentary.'
                 ),
                 'user_prompt': (
                     'Translate the following Korean YouTube script to English.\n'
-                    'Translate ALL fields: narration, scene, and mood.\n\n'
+                    'You MUST translate ALL three fields for EVERY paragraph: narration, scene, and mood.\n\n'
                     'Rules:\n'
-                    '- Narration: natural spoken English for TTS (teens/20s audience)\n'
-                    '- Scene: English description for AI image generation (20-30 words)\n'
-                    '- Mood: single English keyword (e.g. tense, mysterious, triumphant, somber)\n'
+                    '- narration: natural spoken English for TTS (teens/20s audience)\n'
+                    '- scene: English description for AI image generation (20-30 words)\n'
+                    '- mood: REQUIRED - single English keyword (e.g. tense, mysterious, triumphant, somber, dramatic, shocking, hopeful)\n'
                     '- Keep the same number of paragraphs\n'
+                    '- Every paragraph object MUST contain all three keys: "narration", "scene", "mood"\n'
                     '- Output ONLY JSON, no commentary or code block\n\n'
                     'Korean script:\n{script}\n\n'
-                    'Output format:\n'
-                    '{"paragraphs": [{"narration": "...", "scene": "...", "mood": "..."}]}'
+                    'Output format (every paragraph MUST have narration + scene + mood):\n'
+                    '{"paragraphs": [{"narration": "English narration text", "scene": "English scene description", "mood": "English mood keyword"}]}'
                 ),
             },
             'scene_direction': {

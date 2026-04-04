@@ -140,7 +140,12 @@
             {% if step.step_name == 'tts_completed' %}
             <div class="result-panel d-none border-top bg-light" id="result-tts_completed">
                 <div class="p-3">
-                    <span class="fw-semibold small d-block mb-2">Audio Files</span>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold small">Audio Files</span>
+                        <button class="btn btn-sm btn-outline-primary" id="btn-download-all-audio" style="display:none;">
+                            <i class="bi bi-download me-1"></i>Download All
+                        </button>
+                    </div>
                     <div id="tts-player-list">
                         <p class="text-muted small">No audio files generated yet.</p>
                     </div>
@@ -151,8 +156,10 @@
             {% if step.step_name == 'images_generated' %}
             <div class="result-panel d-none border-top bg-light" id="result-images_generated">
                 <div class="p-3">
-                    <span class="fw-semibold small d-block mb-2">Generated Images</span>
-                    <div class="row g-2" id="image-preview-list">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold small">Generated Images</span>
+                    </div>
+                    <div id="image-scenes-container">
                         <p class="text-muted small">No images generated yet.</p>
                     </div>
                 </div>
@@ -188,6 +195,34 @@
     <div class="card-body bg-dark text-light p-2" style="max-height: 220px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 0.8rem;"
          id="log-feed">
         <div class="text-muted">Waiting...</div>
+    </div>
+</div>
+
+<!-- Image Lightbox Modal -->
+<div class="modal fade" id="imageLightbox" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <span class="fw-semibold small" id="lightbox-title">Image</span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-2">
+                <img id="lightbox-img" src="" class="img-fluid rounded" style="max-height:70vh;">
+            </div>
+            <div class="modal-footer py-2 d-flex justify-content-between">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" id="lightbox-vary-subtle">
+                        <i class="bi bi-brush me-1"></i>Subtle
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" id="lightbox-vary-strong">
+                        <i class="bi bi-lightning me-1"></i>Strong
+                    </button>
+                </div>
+                <button class="btn btn-sm btn-success" id="lightbox-select">
+                    <i class="bi bi-check-lg me-1"></i>Select This Image
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -131,12 +131,22 @@ def _execute_step_logic(run, step_name):
         }
 
     elif step_name == 'tts_completed':
-        _log(run.id, 'TTS: Not yet implemented (stub)')
-        return {'message': 'TTS - not yet implemented'}
+        from ..services.media.tts_service import generate_tts
+        result = generate_tts(
+            selected_topic_id=run.selected_topic_id,
+            run_id=run.id,
+            log_fn=lambda msg: _log(run.id, msg),
+        )
+        return result
 
     elif step_name == 'images_generated':
-        _log(run.id, 'Images: Not yet implemented (stub)')
-        return {'message': 'Image generation - not yet implemented'}
+        from ..services.media.image_service import generate_images
+        result = generate_images(
+            selected_topic_id=run.selected_topic_id,
+            run_id=run.id,
+            log_fn=lambda msg: _log(run.id, msg),
+        )
+        return result
 
     elif step_name == 'uploaded':
         _log(run.id, 'Upload: Not yet implemented (stub)')

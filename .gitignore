@@ -33,3 +33,4 @@ Thumbs.db
 # Project-specific
 idea/
 .claude/settings.local.json
+.claude/**

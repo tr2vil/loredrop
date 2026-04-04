@@ -1,10 +1,11 @@
 from ...extensions import redis_client
 
-VALID_SECTIONS = ['tts', 'midjourney', 'general', 'api_keys']
+VALID_SECTIONS = ['tts', 'image', 'midjourney', 'leonardo', 'general', 'api_keys']
 
 # Default values for each settings section
 DEFAULTS = {
     'tts': {
+        'provider': 'edge_tts',
         'ko_voice_id': '',
         'en_voice_id': '',
         'model_id': 'eleven_multilingual_v2',
@@ -12,6 +13,12 @@ DEFAULTS = {
         'similarity': '0.75',
         'style': '0.0',
         'speed': '1.0',
+        'edge_voice': 'en-US-GuyNeural',
+        'edge_rate': '+0%',
+        'edge_pitch': '+0Hz',
+    },
+    'image': {
+        'provider': 'midjourney',
     },
     'midjourney': {
         'style_preset': 'cinematic dark moody historical',
@@ -20,6 +27,21 @@ DEFAULTS = {
         'version': 'v6.1',
         'negative_prompt': '',
         'character_refs': '',
+    },
+    'leonardo': {
+        'model_id': '',
+        'num_images': '4',
+        'width': '576',
+        'height': '1024',
+        'preset_style': 'NONE',
+        'art_style': 'A whimsical watercolor illustration',
+        'color_palette': 'soft teal and warm beige tones',
+        'rendering_style': 'delicate ink linework, dreamy storybook aesthetic, textured paper background',
+        'consistent_elements': 'magical sparkles and light rays, cozy enchanting atmosphere',
+        'negative_prompt': 'blurry, low quality, text, watermark, ugly, deformed',
+        'style_ref_image_id': '',
+        'style_ref_image_url': '',
+        'style_ref_strength': '0.5',
     },
     'general': {
         'default_language': 'ko',

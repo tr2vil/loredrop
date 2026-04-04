@@ -14,8 +14,8 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" data-bs-toggle="tab" href="#tab-midjourney">
-            <i class="bi bi-image me-1"></i> Midjourney
+        <a class="nav-link" data-bs-toggle="tab" href="#tab-image">
+            <i class="bi bi-image me-1"></i> Image
         </a>
     </li>
     <li class="nav-item">
@@ -36,41 +36,110 @@
         <div class="card stat-card">
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Korean Voice ID</label>
-                        <input type="text" class="form-control settings-input" data-section="tts" data-key="ko_voice_id">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">English Voice ID</label>
-                        <input type="text" class="form-control settings-input" data-section="tts" data-key="en_voice_id">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Model</label>
-                        <select class="form-select settings-input" data-section="tts" data-key="model_id">
-                            <option value="eleven_multilingual_v2">eleven_multilingual_v2</option>
-                            <option value="eleven_monolingual_v1">eleven_monolingual_v1</option>
-                            <option value="eleven_turbo_v2_5">eleven_turbo_v2_5</option>
+                    <!-- Provider Selector -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold">TTS Provider</label>
+                        <select class="form-select settings-input" data-section="tts" data-key="provider" id="tts-provider-select">
+                            <option value="edge_tts">Edge TTS (Free, no API key)</option>
+                            <option value="elevenlabs">ElevenLabs (API key required)</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Speed <span class="text-muted fw-normal" id="tts-speed-val">1.0</span></label>
-                        <input type="range" class="form-range settings-input" data-section="tts" data-key="speed"
-                               min="0.5" max="2.0" step="0.1" value="1.0">
+
+                    <!-- Edge TTS Settings -->
+                    <div class="col-12 tts-provider-group" data-provider="edge_tts">
+                        <div class="alert alert-success py-2 mb-3">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Edge TTS is free with no usage limits. Powered by Microsoft Edge's Read Aloud engine.
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Voice</label>
+                                <select class="form-select settings-input" data-section="tts" data-key="edge_voice">
+                                    <optgroup label="Male (US)">
+                                        <option value="en-US-GuyNeural">Guy (deep, narration)</option>
+                                        <option value="en-US-ChristopherNeural">Christopher (warm)</option>
+                                        <option value="en-US-AndrewMultilingualNeural">Andrew (natural)</option>
+                                        <option value="en-US-EricNeural">Eric (clear)</option>
+                                    </optgroup>
+                                    <optgroup label="Female (US)">
+                                        <option value="en-US-AriaNeural">Aria (clear narrator)</option>
+                                        <option value="en-US-JennyNeural">Jenny (versatile)</option>
+                                        <option value="en-US-MichelleNeural">Michelle (warm)</option>
+                                    </optgroup>
+                                    <optgroup label="Male (UK)">
+                                        <option value="en-GB-RyanNeural">Ryan (British)</option>
+                                    </optgroup>
+                                    <optgroup label="Female (UK)">
+                                        <option value="en-GB-SoniaNeural">Sonia (British)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Rate</label>
+                                <select class="form-select settings-input" data-section="tts" data-key="edge_rate">
+                                    <option value="-30%">Slow (-30%)</option>
+                                    <option value="-20%">Slower (-20%)</option>
+                                    <option value="-10%">Slightly slow (-10%)</option>
+                                    <option value="+0%" selected>Normal</option>
+                                    <option value="+10%">Slightly fast (+10%)</option>
+                                    <option value="+20%">Faster (+20%)</option>
+                                    <option value="+30%">Fast (+30%)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Pitch</label>
+                                <select class="form-select settings-input" data-section="tts" data-key="edge_pitch">
+                                    <option value="-10Hz">Lower (-10Hz)</option>
+                                    <option value="-5Hz">Slightly lower (-5Hz)</option>
+                                    <option value="+0Hz" selected>Normal</option>
+                                    <option value="+5Hz">Slightly higher (+5Hz)</option>
+                                    <option value="+10Hz">Higher (+10Hz)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Stability <span class="text-muted fw-normal" id="tts-stability-val">0.5</span></label>
-                        <input type="range" class="form-range settings-input" data-section="tts" data-key="stability"
-                               min="0" max="1" step="0.05" value="0.5">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Similarity <span class="text-muted fw-normal" id="tts-similarity-val">0.75</span></label>
-                        <input type="range" class="form-range settings-input" data-section="tts" data-key="similarity"
-                               min="0" max="1" step="0.05" value="0.75">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Style <span class="text-muted fw-normal" id="tts-style-val">0.0</span></label>
-                        <input type="range" class="form-range settings-input" data-section="tts" data-key="style"
-                               min="0" max="1" step="0.05" value="0.0">
+
+                    <!-- ElevenLabs Settings -->
+                    <div class="col-12 tts-provider-group d-none" data-provider="elevenlabs">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Korean Voice ID</label>
+                                <input type="text" class="form-control settings-input" data-section="tts" data-key="ko_voice_id">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">English Voice ID</label>
+                                <input type="text" class="form-control settings-input" data-section="tts" data-key="en_voice_id">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Model</label>
+                                <select class="form-select settings-input" data-section="tts" data-key="model_id">
+                                    <option value="eleven_multilingual_v2">eleven_multilingual_v2</option>
+                                    <option value="eleven_v3">eleven_v3</option>
+                                    <option value="eleven_flash_v2_5">eleven_flash_v2_5</option>
+                                    <option value="eleven_monolingual_v1">eleven_monolingual_v1</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Speed <span class="text-muted fw-normal" id="tts-speed-val">1.0</span></label>
+                                <input type="range" class="form-range settings-input" data-section="tts" data-key="speed"
+                                       min="0.5" max="2.0" step="0.1" value="1.0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Stability <span class="text-muted fw-normal" id="tts-stability-val">0.5</span></label>
+                                <input type="range" class="form-range settings-input" data-section="tts" data-key="stability"
+                                       min="0" max="1" step="0.05" value="0.5">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Similarity <span class="text-muted fw-normal" id="tts-similarity-val">0.75</span></label>
+                                <input type="range" class="form-range settings-input" data-section="tts" data-key="similarity"
+                                       min="0" max="1" step="0.05" value="0.75">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Style <span class="text-muted fw-normal" id="tts-style-val">0.0</span></label>
+                                <input type="range" class="form-range settings-input" data-section="tts" data-key="style"
+                                       min="0" max="1" step="0.05" value="0.0">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="mt-4 d-flex gap-2">
@@ -85,59 +154,214 @@
         </div>
     </div>
 
-    <!-- Midjourney Settings -->
-    <div class="tab-pane fade" id="tab-midjourney">
+    <!-- Image Settings -->
+    <div class="tab-pane fade" id="tab-image">
         <div class="card stat-card">
             <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Midjourney integration is planned for a future update. Configure settings now for when it's ready.
-                </div>
-                <div class="row g-3">
-                    <div class="col-md-8">
-                        <label class="form-label fw-bold">Style Preset</label>
-                        <input type="text" class="form-control settings-input" data-section="midjourney" data-key="style_preset"
-                               placeholder="e.g., cinematic dark moody historical">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Aspect Ratio</label>
-                        <select class="form-select settings-input" data-section="midjourney" data-key="aspect_ratio">
-                            <option value="9:16">9:16 (Shorts)</option>
-                            <option value="16:9">16:9 (Standard)</option>
-                            <option value="1:1">1:1 (Square)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Quality</label>
-                        <select class="form-select settings-input" data-section="midjourney" data-key="quality">
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">MJ Version</label>
-                        <select class="form-select settings-input" data-section="midjourney" data-key="version">
-                            <option value="v6.1">v6.1</option>
-                            <option value="v6">v6</option>
-                            <option value="v5.2">v5.2</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Negative Prompt</label>
-                        <textarea class="form-control settings-input" data-section="midjourney" data-key="negative_prompt"
-                                  rows="2" placeholder="Elements to exclude..."></textarea>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Character References (image URLs, one per line)</label>
-                        <textarea class="form-control settings-input" data-section="midjourney" data-key="character_refs"
-                                  rows="3" placeholder="https://example.com/character1.png"></textarea>
+                <!-- Provider Selector -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Image Provider</label>
+                    <div class="d-flex gap-4">
+                        <div class="form-check">
+                            <input class="form-check-input settings-input" type="radio" name="imageProvider"
+                                   id="img-provider-midjourney" data-section="image" data-key="provider" value="midjourney">
+                            <label class="form-check-label" for="img-provider-midjourney">Midjourney (Manual)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input settings-input" type="radio" name="imageProvider"
+                                   id="img-provider-leonardo" data-section="image" data-key="provider" value="leonardo">
+                            <label class="form-check-label" for="img-provider-leonardo">Leonardo.ai (Auto)</label>
+                        </div>
                     </div>
                 </div>
-                <div class="mt-4">
-                    <button class="btn btn-primary btn-save-settings" data-section="midjourney">
-                        <i class="bi bi-check-lg me-1"></i> Save
-                    </button>
+
+                <!-- Midjourney Settings -->
+                <div class="image-provider-group" data-provider="midjourney">
+                    <div class="alert alert-warning py-2 mb-3">
+                        <i class="bi bi-hand-index me-1"></i>
+                        Midjourney는 API를 지원하지 않아 수동으로 이미지를 생성해야 합니다. 아래 설정은 프롬프트 생성 시 참고됩니다.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Style Preset</label>
+                            <input type="text" class="form-control settings-input" data-section="midjourney" data-key="style_preset"
+                                   placeholder="e.g., cinematic dark moody historical">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Aspect Ratio</label>
+                            <select class="form-select settings-input" data-section="midjourney" data-key="aspect_ratio">
+                                <option value="9:16">9:16 (Shorts)</option>
+                                <option value="16:9">16:9 (Standard)</option>
+                                <option value="1:1">1:1 (Square)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Quality</label>
+                            <select class="form-select settings-input" data-section="midjourney" data-key="quality">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">MJ Version</label>
+                            <select class="form-select settings-input" data-section="midjourney" data-key="version">
+                                <option value="v6.1">v6.1</option>
+                                <option value="v6">v6</option>
+                                <option value="v5.2">v5.2</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Negative Prompt</label>
+                            <textarea class="form-control settings-input" data-section="midjourney" data-key="negative_prompt"
+                                      rows="2" placeholder="Elements to exclude..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Character References (image URLs, one per line)</label>
+                            <textarea class="form-control settings-input" data-section="midjourney" data-key="character_refs"
+                                      rows="3" placeholder="https://example.com/character1.png"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button class="btn btn-primary btn-save-settings" data-section="midjourney">
+                            <i class="bi bi-check-lg me-1"></i> Save
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Leonardo.ai Settings -->
+                <div class="image-provider-group d-none" data-provider="leonardo">
+                    <div class="alert alert-success py-2 mb-3">
+                        <i class="bi bi-robot me-1"></i>
+                        Leonardo.ai는 파이프라인에서 자동으로 이미지를 생성합니다.
+                        아래 설정은 채널 전체 영상의 비주얼 일관성을 유지하기 위한 공통 스타일 요소입니다.
+                    </div>
+
+                    <!-- Visual Consistency Settings -->
+                    <h6 class="fw-bold mb-3"><i class="bi bi-palette me-1"></i>Visual Consistency (채널 공통 스타일)</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Art Style <span class="text-muted fw-normal">- 그림체/화풍</span></label>
+                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="art_style"
+                                   placeholder="e.g., A whimsical watercolor illustration">
+                            <div class="form-text">프롬프트 맨 앞에 위치. 모든 이미지의 기본 화풍을 결정합니다.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Color Palette <span class="text-muted fw-normal">- 색감/톤</span></label>
+                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="color_palette"
+                                   placeholder="e.g., soft teal and warm beige tones">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Rendering Style <span class="text-muted fw-normal">- 표현 기법</span></label>
+                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="rendering_style"
+                                   placeholder="e.g., delicate ink linework, dreamy storybook aesthetic">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Consistent Elements <span class="text-muted fw-normal">- 공통 요소/분위기</span></label>
+                            <textarea class="form-control settings-input" data-section="leonardo" data-key="consistent_elements"
+                                      rows="2" placeholder="e.g., magical sparkles and light rays, cozy enchanting atmosphere"></textarea>
+                            <div class="form-text">매 이미지에 공통으로 들어가는 시각적 요소 (질감, 효과, 분위기 등)</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Negative Prompt <span class="text-muted fw-normal">- 제외 요소</span></label>
+                            <textarea class="form-control settings-input" data-section="leonardo" data-key="negative_prompt"
+                                      rows="2" placeholder="e.g., blurry, low quality, text, watermark"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Prompt Preview -->
+                    <div class="card bg-dark text-light mb-4">
+                        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                            <span class="small fw-bold"><i class="bi bi-eye me-1"></i>Prompt Preview</span>
+                            <span class="badge bg-secondary">scene/mood는 대본에서 자동 삽입</span>
+                        </div>
+                        <div class="card-body py-2" style="font-family: 'Consolas', monospace; font-size: 0.8rem;" id="leonardo-prompt-preview">
+                            <span class="text-info">{art_style}</span> of <span class="text-warning">{scene_direction}</span>,
+                            <span class="text-success">{mood}</span> atmosphere,
+                            <span class="text-info">{color_palette}</span>,
+                            <span class="text-info">{rendering_style}</span>,
+                            <span class="text-info">{consistent_elements}</span>
+                        </div>
+                    </div>
+
+                    <!-- Style Reference Image -->
+                    <h6 class="fw-bold mb-3"><i class="bi bi-image me-1"></i>Style Reference Image (스타일 참조 이미지)</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control" id="style-ref-url-input"
+                                       placeholder="이미지 URL을 입력하세요 (e.g., https://example.com/style.png)">
+                                <button class="btn btn-outline-primary" id="btn-upload-style-ref" style="white-space:nowrap;">
+                                    <i class="bi bi-cloud-upload me-1"></i>Upload
+                                </button>
+                            </div>
+                            <div class="form-text">미드저니의 이미지 참조(--iw)와 동일한 역할. URL에서 이미지를 다운로드하여 Leonardo에 업로드합니다.</div>
+                        </div>
+                        <div class="col-12" id="style-ref-preview" style="display:none;">
+                            <div class="d-flex align-items-center gap-3 p-2 bg-light rounded">
+                                <img id="style-ref-thumb" src="" style="width:80px; height:80px; object-fit:cover; border-radius:4px;">
+                                <div class="flex-grow-1">
+                                    <div class="small fw-bold text-success"><i class="bi bi-check-circle me-1"></i>Style Reference Active</div>
+                                    <div class="text-muted small text-truncate" id="style-ref-id-display"></div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger" id="btn-remove-style-ref" title="Remove">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Style Reference Strength <span class="text-muted fw-normal" id="style-ref-strength-val">0.5</span></label>
+                            <input type="range" class="form-range settings-input" data-section="leonardo" data-key="style_ref_strength"
+                                   min="0.1" max="0.9" step="0.1" value="0.5">
+                            <div class="form-text">낮을수록 참조 이미지에 가까움 (0.1), 높을수록 프롬프트에 충실 (0.9)</div>
+                        </div>
+                    </div>
+
+                    <!-- Generation Settings -->
+                    <h6 class="fw-bold mb-3"><i class="bi bi-gear me-1"></i>Generation Settings</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Model ID</label>
+                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="model_id"
+                                   placeholder="Leave empty for default model">
+                            <div class="form-text">Leonardo model UUID (빈칸이면 기본 모델)</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Images per Scene</label>
+                            <select class="form-select settings-input" data-section="leonardo" data-key="num_images">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Preset Style</label>
+                            <select class="form-select settings-input" data-section="leonardo" data-key="preset_style">
+                                <option value="NONE">None (프롬프트만 사용)</option>
+                                <option value="CINEMATIC">Cinematic</option>
+                                <option value="DYNAMIC">Dynamic</option>
+                                <option value="ANIME">Anime</option>
+                                <option value="PHOTOGRAPHY">Photography</option>
+                                <option value="ILLUSTRATION">Illustration</option>
+                                <option value="GENERAL">General</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Width</label>
+                            <input type="number" class="form-control settings-input" data-section="leonardo" data-key="width"
+                                   min="256" max="1536" step="8" value="576">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Height</label>
+                            <input type="number" class="form-control settings-input" data-section="leonardo" data-key="height"
+                                   min="256" max="1536" step="8" value="1024">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button class="btn btn-primary btn-save-settings" data-section="leonardo">
+                            <i class="bi bi-check-lg me-1"></i> Save
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -264,11 +488,76 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
+    // TTS Provider toggle
+    function toggleTtsProvider(provider) {
+        $('.tts-provider-group').addClass('d-none');
+        $('.tts-provider-group[data-provider="' + provider + '"]').removeClass('d-none');
+    }
+    $('#tts-provider-select').on('change', function() {
+        toggleTtsProvider($(this).val());
+    });
+
+    // Image Provider toggle
+    function toggleImageProvider(provider) {
+        $('.image-provider-group').addClass('d-none');
+        $('.image-provider-group[data-provider="' + provider + '"]').removeClass('d-none');
+    }
+    $('input[name="imageProvider"]').on('change', function() {
+        var provider = $(this).val();
+        toggleImageProvider(provider);
+        // Save provider selection immediately
+        $.ajax({
+            url: '/settings/api/image',
+            method: 'PUT',
+            data: JSON.stringify({ provider: provider }),
+            success: function() { showToast('Image provider changed to ' + provider, 'success'); },
+            error: function() { showToast('Failed to save provider.', 'danger'); }
+        });
+    });
+
     // Slider value display
     $('input[type="range"]').on('input', function() {
         var key = $(this).data('key');
         var section = $(this).data('section');
         $('#' + section + '-' + key + '-val').text($(this).val());
+    });
+
+    // Test Connection
+    $('.btn-test-settings').on('click', function() {
+        var section = $(this).data('section');
+        if (section !== 'tts') {
+            showToast('Test not implemented for this section yet.', 'info');
+            return;
+        }
+        // Collect current UI values and send them to the test endpoint
+        var formData = {};
+        $('.settings-input[data-section="tts"]').each(function() {
+            var key = $(this).data('key');
+            if (key) formData[key] = $(this).val();
+        });
+        var $btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Testing...');
+        $.ajax({
+            url: '/settings/api/tts/test',
+            method: 'POST',
+            data: JSON.stringify(formData),
+            success: function(res) {
+                if (res.ok) {
+                    // Play the test audio
+                    var audio = new Audio('data:audio/mpeg;base64,' + res.audio_b64);
+                    audio.play();
+                    showToast('TTS works! (' + res.provider + ', ' + Math.round(res.size / 1024) + ' KB)', 'success');
+                } else {
+                    showToast('Test failed: ' + res.error, 'danger');
+                }
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Connection failed.';
+                showToast('Test failed: ' + msg, 'danger');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="bi bi-play me-1"></i> Test Connection');
+            }
+        });
     });
 
     // Password toggle
@@ -303,8 +592,70 @@ $(document).ready(function() {
         });
     });
 
+    // Style Reference upload
+    $('#btn-upload-style-ref').on('click', function() {
+        var url = $('#style-ref-url-input').val().trim();
+        if (!url) { showToast('이미지 URL을 입력하세요.', 'warning'); return; }
+        var $btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Uploading...');
+        $.ajax({
+            url: '/settings/api/leonardo/upload-style-ref',
+            method: 'POST',
+            data: JSON.stringify({ image_url: url }),
+            success: function(res) {
+                showToast('Style reference uploaded!', 'success');
+                showStyleRefPreview(res.image_url, res.init_image_id);
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Upload failed.';
+                showToast(msg, 'danger');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="bi bi-cloud-upload me-1"></i>Upload');
+            }
+        });
+    });
+
+    $('#btn-remove-style-ref').on('click', function() {
+        $.ajax({
+            url: '/settings/api/leonardo',
+            method: 'PUT',
+            data: JSON.stringify({ style_ref_image_id: '', style_ref_image_url: '' }),
+            success: function() {
+                $('#style-ref-preview').hide();
+                $('#style-ref-url-input').val('');
+                showToast('Style reference removed.', 'info');
+            }
+        });
+    });
+
+    function showStyleRefPreview(url, id) {
+        if (url && id) {
+            $('#style-ref-thumb').attr('src', url);
+            $('#style-ref-id-display').text('ID: ' + id);
+            $('#style-ref-url-input').val(url);
+            $('#style-ref-preview').show();
+        } else {
+            $('#style-ref-preview').hide();
+        }
+    }
+
+    // Leonardo prompt preview
+    function updatePromptPreview() {
+        var art = $('[data-section="leonardo"][data-key="art_style"]').val() || '{art_style}';
+        var color = $('[data-section="leonardo"][data-key="color_palette"]').val() || '{color_palette}';
+        var render = $('[data-section="leonardo"][data-key="rendering_style"]').val() || '{rendering_style}';
+        var elements = $('[data-section="leonardo"][data-key="consistent_elements"]').val() || '{consistent_elements}';
+        var parts = ['<span class="text-info">' + art + '</span> of <span class="text-warning">{scene_direction}</span>'];
+        parts.push('<span class="text-success">{mood}</span> atmosphere');
+        if (color) parts.push('<span class="text-info">' + color + '</span>');
+        if (render) parts.push('<span class="text-info">' + render + '</span>');
+        if (elements) parts.push('<span class="text-info">' + elements + '</span>');
+        $('#leonardo-prompt-preview').html(parts.join(', '));
+    }
+    $(document).on('input', '[data-section="leonardo"][data-key="art_style"], [data-section="leonardo"][data-key="color_palette"], [data-section="leonardo"][data-key="rendering_style"], [data-section="leonardo"][data-key="consistent_elements"]', updatePromptPreview);
+
     // Load settings on page load
-    ['tts', 'midjourney', 'general', 'api_keys'].forEach(function(section) {
+    ['tts', 'image', 'leonardo', 'midjourney', 'general', 'api_keys'].forEach(function(section) {
         $.getJSON('/settings/api/' + section, function(data) {
             Object.keys(data).forEach(function(key) {
                 var $el = $('.settings-input[data-section="' + section + '"][data-key="' + key + '"]');
@@ -319,6 +670,19 @@ $(document).ready(function() {
                     $el.val(data[key]);
                 }
             });
+            // Toggle TTS provider panel after loading
+            if (section === 'tts' && data.provider) {
+                toggleTtsProvider(data.provider);
+            }
+            // Toggle Image provider panel after loading
+            if (section === 'image' && data.provider) {
+                toggleImageProvider(data.provider);
+            }
+            // Update Leonardo prompt preview + style ref after settings load
+            if (section === 'leonardo') {
+                updatePromptPreview();
+                showStyleRefPreview(data.style_ref_image_url, data.style_ref_image_id);
+            }
         });
     });
 });

@@ -105,7 +105,7 @@ topic_confirmed → script_generated → script_translated → tts_completed →
 - `topic_confirmed`: 주제 확정
 - `script_generated`: Claude API로 한국어 대본 생성 (JSON: narration/scene/mood)
 - `script_translated`: 한국어 → 영어 번역 (scene/mood 영어 변환)
-- `tts_completed`: ElevenLabs TTS (stub)
+- `tts_completed`: ElevenLabs TTS (문단별 음성 생성, MP3 저장, 실시간 진행률)
 - `images_generated`: 이미지 생성 (stub)
 - `uploaded`: YouTube 업로드 (stub)
 
@@ -158,13 +158,48 @@ Redis에 저장. 각 프롬프트는 `system_prompt` + `user_prompt` 쌍.
 
 ## Claude Code 스킬
 
+### Docker 관리
+
 | 명령어 | 기능 |
 |---|---|
-| `/docker-up` | 컨테이너 시작 |
+| `/docker-up` | 컨테이너 시작 + ngrok 터널 연결 |
 | `/docker-down` | 컨테이너 안전 중지 (볼륨 유지) |
 | `/docker-restart` | 컨테이너 재시작 |
 | `/docker-status` | 컨테이너 + 볼륨 상태 확인 |
 | `/docker-rebuild` | 이미지 재빌드 후 시작 |
+
+### 개발 워크플로우 (Sub-Agent)
+
+| 명령어 | 역할 | 언제 사용 |
+|---|---|---|
+| `/dev` | **오케스트레이터** — 하위 agent를 자동 조율하여 설계→구현→테스트→리뷰 전체 흐름 실행 | 새 기능 개발, 변경 요청 시 진입점 |
+| `/planner` | 구현 계획 수립 (영향 범위, 단계, 아키텍처 결정) | 새 기능, 구조 변경 시 |
+| `/researcher` | 외부 API/라이브러리 조사 (공식 문서, 요금, 제한사항) | 새 API 연동, 라이브러리 도입 시 |
+| `/reviewer` | 코드 리뷰 (보안, 성능, 일관성, DB/Redis 패턴) | 커밋/PR 전 |
+| `/tester` | API/통합 테스트 (Docker 환경에서 curl 기반 검증) | 구현 완료 후 |
+| `/debugger` | 에러 근본 원인 추적 + 수정 (로그 분석, 상태 비교) | 버그 발생 시 |
+
+#### /dev 워크플로우 흐름
+
+```
+사용자 요청 → /dev (오케스트레이터)
+  │
+  ├─ 대규모 작업 (새 기능, API 연동)
+  │   ├── /planner → 설계
+  │   ├── /researcher → 조사 (필요 시)
+  │   ├── 사용자 확인
+  │   ├── 구현
+  │   ├── /tester → 테스트
+  │   └── /reviewer → 코드 리뷰
+  │
+  ├─ 소규모 작업 (버그 수정, 설정 변경)
+  │   ├── 바로 구현
+  │   └── /tester → 테스트
+  │
+  └─ 에러 발생 시 → /debugger → 수정 → /tester (최대 3회 반복)
+```
+
+각 스킬은 개별 호출도 가능: `/reviewer`, `/debugger` 등
 
 ## 개발 규칙
 

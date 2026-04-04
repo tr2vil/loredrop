@@ -1,5 +1,6 @@
+import os
 from datetime import datetime
-from flask import Blueprint, render_template, jsonify, request, redirect, url_for, current_app
+from flask import Blueprint, render_template, jsonify, request, redirect, url_for, current_app, send_file
 from ..extensions import db, redis_client
 from ..models.topic import SelectedTopic
 from ..models.script import Script, ScriptParagraph
@@ -110,12 +111,23 @@ def get_status(run_id):
     run = PipelineRun.query.get_or_404(run_id)
     steps = PipelineStep.query.filter_by(run_id=run_id).order_by(PipelineStep.id).all()
     logs = redis_client.lrange(f'pipeline:run:{run_id}:log', 0, -1)
+
+    # Include step-level progress (e.g., TTS paragraph progress, image progress)
+    step_progress = {}
+    tts_prog = redis_client.hgetall(f'pipeline:run:{run_id}:tts_progress')
+    if tts_prog:
+        step_progress['tts_completed'] = tts_prog
+    img_prog = redis_client.hgetall(f'pipeline:run:{run_id}:images_progress')
+    if img_prog:
+        step_progress['images_generated'] = img_prog
+
     return jsonify({
         'status': run.status,
         'current_step': run.current_step,
         'auto_mode': run.auto_mode,
         'steps': [s.to_dict() for s in steps],
         'logs': logs,
+        'step_progress': step_progress,
     })
 
 
@@ -180,3 +192,105 @@ def _split_paragraphs(text):
         if block:
             paragraphs.append(block)
     return paragraphs if paragraphs else [text.strip()]
+
+
+# ─── Per-paragraph TTS API ───
+
+@pipeline_bp.route('/api/<int:run_id>/tts/paragraph/<int:paragraph_id>', methods=['POST'])
+def generate_paragraph_tts(run_id, paragraph_id):
+    """Generate TTS for a single paragraph."""
+    run = PipelineRun.query.get_or_404(run_id)
+    try:
+        from ..services.media.tts_service import generate_single_tts
+        result = generate_single_tts(paragraph_id, run_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── Audio file serving & download ───
+
+@pipeline_bp.route('/api/<int:run_id>/audio/<path:filename>')
+def serve_audio(run_id, filename):
+    """Serve an audio file for playback."""
+    audio_dir = os.path.join(
+        current_app.config['OUTPUT_DIR'], 'audio', f'run_{run_id}'
+    )
+    filepath = os.path.join(audio_dir, filename)
+    if not os.path.isfile(filepath):
+        return jsonify({'error': 'File not found'}), 404
+    return send_file(filepath, mimetype='audio/mpeg')
+
+
+@pipeline_bp.route('/api/<int:run_id>/audio/<path:filename>/download')
+def download_audio(run_id, filename):
+    """Download an audio file."""
+    audio_dir = os.path.join(
+        current_app.config['OUTPUT_DIR'], 'audio', f'run_{run_id}'
+    )
+    filepath = os.path.join(audio_dir, filename)
+    if not os.path.isfile(filepath):
+        return jsonify({'error': 'File not found'}), 404
+    return send_file(filepath, mimetype='audio/mpeg', as_attachment=True,
+                     download_name=filename)
+
+
+# ─── Image generation API ───
+
+@pipeline_bp.route('/api/<int:run_id>/images', methods=['GET'])
+def get_images(run_id):
+    """Get all scene images for a pipeline run."""
+    from ..services.media.image_service import get_scene_images
+    images = get_scene_images(run_id)
+    return jsonify({'images': images})
+
+
+@pipeline_bp.route('/api/<int:run_id>/images/paragraph/<int:paragraph_id>', methods=['POST'])
+def generate_paragraph_images(run_id, paragraph_id):
+    """Generate images for a single paragraph."""
+    run = PipelineRun.query.get_or_404(run_id)
+    try:
+        from ..services.media.image_service import generate_single_scene
+        result = generate_single_scene(paragraph_id, run_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@pipeline_bp.route('/api/<int:run_id>/images/select', methods=['POST'])
+def select_image(run_id):
+    """Select an image for a scene."""
+    data = request.get_json() or {}
+    scene_image_id = data.get('scene_image_id')
+    selected_url = data.get('selected_url')
+
+    if not scene_image_id or not selected_url:
+        return jsonify({'error': 'scene_image_id and selected_url are required'}), 400
+
+    try:
+        from ..services.media.image_service import select_image as do_select
+        result = do_select(scene_image_id, selected_url)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@pipeline_bp.route('/api/<int:run_id>/images/vary', methods=['POST'])
+def vary_image(run_id):
+    """Generate variations of a specific image (subtle or strong)."""
+    data = request.get_json() or {}
+    scene_image_id = data.get('scene_image_id')
+    source_url = data.get('source_url')
+    strength = data.get('strength', 'subtle')  # 'subtle' or 'strong'
+
+    if not scene_image_id or not source_url:
+        return jsonify({'error': 'scene_image_id and source_url are required'}), 400
+    if strength not in ('subtle', 'strong'):
+        return jsonify({'error': 'strength must be "subtle" or "strong"'}), 400
+
+    try:
+        from ..services.media.image_service import vary_scene_image
+        result = vary_scene_image(scene_image_id, source_url, strength)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

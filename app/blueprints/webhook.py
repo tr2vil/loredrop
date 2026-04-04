@@ -70,16 +70,21 @@ def _handle_callback_query(callback_query):
 
     # Custom topic input mode
     elif action == 'custom':
-        answer_callback(callback_id, 'Enter your topic')
-        redis_client.set(CUSTOM_TOPIC_STATE_KEY.format(chat_id=chat_id), '1', ex=300)  # 5min timeout
-        send_message(
-            '✏️ <b>직접 주제를 입력해주세요.</b>\n\n'
-            '주제와 간단한 설명을 함께 적어주면 더 좋은 대본이 만들어집니다.\n\n'
-            '예시:\n'
-            '<i>한국의 PC방 문화: 1997년 외환위기 이후 PC방이 급증한 배경과 '
-            '한국이 세계 최초 e스포츠 강국이 된 과정</i>',
-            chat_id=chat_id
-        )
+        try:
+            answer_callback(callback_id, 'Enter your topic')
+            redis_client.set(CUSTOM_TOPIC_STATE_KEY.format(chat_id=chat_id), '1', ex=300)  # 5min timeout
+            send_message(
+                '✏️ <b>직접 주제를 입력해주세요.</b>\n\n'
+                '이 메시지에 <b>답장</b>으로 주제를 입력해주세요.\n'
+                '주제와 간단한 설명을 함께 적어주면 더 좋은 대본이 만들어집니다.\n\n'
+                '예시:\n'
+                '<i>한국의 PC방 문화: 1997년 외환위기 이후 PC방이 급증한 배경과 '
+                '한국이 세계 최초 e스포츠 강국이 된 과정</i>',
+                chat_id=chat_id,
+                reply_markup={'force_reply': True, 'selective': True}
+            )
+        except Exception as e:
+            print(f'[Webhook] Custom topic error: {e}', flush=True)
 
     else:
         answer_callback(callback_id, 'Unknown action')
