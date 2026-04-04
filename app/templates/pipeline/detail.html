@@ -156,8 +156,10 @@
             {% if step.step_name == 'images_generated' %}
             <div class="result-panel d-none border-top bg-light" id="result-images_generated">
                 <div class="p-3">
-                    <span class="fw-semibold small d-block mb-2">Generated Images</span>
-                    <div class="row g-2" id="image-preview-list">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold small">Generated Images</span>
+                    </div>
+                    <div id="image-scenes-container">
                         <p class="text-muted small">No images generated yet.</p>
                     </div>
                 </div>

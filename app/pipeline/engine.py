@@ -140,8 +140,13 @@ def _execute_step_logic(run, step_name):
         return result
 
     elif step_name == 'images_generated':
-        _log(run.id, 'Images: Not yet implemented (stub)')
-        return {'message': 'Image generation - not yet implemented'}
+        from ..services.media.image_service import generate_images
+        result = generate_images(
+            selected_topic_id=run.selected_topic_id,
+            run_id=run.id,
+            log_fn=lambda msg: _log(run.id, msg),
+        )
+        return result
 
     elif step_name == 'uploaded':
         _log(run.id, 'Upload: Not yet implemented (stub)')

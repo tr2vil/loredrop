@@ -1,6 +1,6 @@
 from ...extensions import redis_client
 
-VALID_SECTIONS = ['tts', 'midjourney', 'general', 'api_keys']
+VALID_SECTIONS = ['tts', 'image', 'midjourney', 'leonardo', 'general', 'api_keys']
 
 # Default values for each settings section
 DEFAULTS = {
@@ -17,6 +17,9 @@ DEFAULTS = {
         'edge_rate': '+0%',
         'edge_pitch': '+0Hz',
     },
+    'image': {
+        'provider': 'midjourney',
+    },
     'midjourney': {
         'style_preset': 'cinematic dark moody historical',
         'aspect_ratio': '9:16',
@@ -24,6 +27,15 @@ DEFAULTS = {
         'version': 'v6.1',
         'negative_prompt': '',
         'character_refs': '',
+    },
+    'leonardo': {
+        'model_id': '',
+        'num_images': '4',
+        'width': '1024',
+        'height': '576',
+        'preset_style': 'CINEMATIC',
+        'negative_prompt': 'blurry, low quality, text, watermark',
+        'style_prompt_suffix': 'cinematic lighting, dramatic composition, historical documentary style, 16:9 aspect ratio',
     },
     'general': {
         'default_language': 'ko',

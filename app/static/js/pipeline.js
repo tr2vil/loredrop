@@ -66,6 +66,8 @@ $(document).ready(function() {
                             txt = step.result_data.paragraphs_processed + ' paragraphs · ' +
                                   step.result_data.total_duration + 's · ' +
                                   step.result_data.total_characters + ' chars';
+                        } else if (step.result_data.scenes_processed !== undefined) {
+                            txt = step.result_data.scenes_processed + ' scenes processed';
                         } else if (step.result_data.word_count) {
                             txt = step.result_data.word_count + ' chars · ' + step.result_data.paragraphs + ' paragraphs';
                         } else if (step.result_data.message) {
@@ -97,6 +99,7 @@ $(document).ready(function() {
                         if (step.step_name === 'script_generated' && !koLoaded) loadKoScript();
                         if (step.step_name === 'script_translated' && !enLoaded) loadEnScript();
                         if (step.step_name === 'tts_completed' && !ttsLoaded) loadTtsResults();
+                        if (step.step_name === 'images_generated' && !imagesLoaded) loadImageResults();
                     } else if (step.status === 'pending' && prevCompleted) {
                         $actions.append(
                             '<button class="btn btn-sm btn-outline-primary btn-execute-step" data-run-id="' + RUN_ID + '" data-step="' + step.step_name + '">' +
@@ -141,6 +144,7 @@ $(document).ready(function() {
     var koLoaded = false, enLoaded = false;
 
     var ttsLoaded = false;
+    var imagesLoaded = false;
 
     $(document).on('click', '.btn-toggle-result', function(e) {
         e.stopPropagation();
@@ -151,6 +155,7 @@ $(document).ready(function() {
         if (step === 'script_generated' && !koLoaded) loadKoScript();
         if (step === 'script_translated' && !enLoaded) loadEnScript();
         if (step === 'tts_completed' && !ttsLoaded) loadTtsResults();
+        if (step === 'images_generated' && !imagesLoaded) loadImageResults();
     });
 
     // ─── KO Script (structured paragraphs) ───
@@ -401,6 +406,114 @@ $(document).ready(function() {
             }
         });
     }
+
+    // ─── Image results panel ───
+    function loadImageResults() {
+        $.getJSON('/pipeline/api/' + RUN_ID + '/images', function(data) {
+            imagesLoaded = true;
+            var $container = $('#image-scenes-container').empty();
+            var images = data.images || [];
+
+            if (!images.length) {
+                $container.html('<p class="text-muted small">No images generated yet.</p>');
+                return;
+            }
+
+            // Also load EN script to show scene direction context
+            $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(scriptData) {
+                var paraMap = {};
+                (scriptData.paragraphs || []).forEach(function(p) {
+                    paraMap[p.paragraph_index] = p;
+                });
+
+                images.forEach(function(img) {
+                    var para = paraMap[img.scene_index] || {};
+                    var sceneText = para.scene_direction || '';
+                    var selectedUrl = img.selected_url || '';
+
+                    var imagesHtml = '';
+                    (img.image_urls || []).forEach(function(url, idx) {
+                        var isSelected = (url === selectedUrl);
+                        imagesHtml +=
+                            '<div class="col-6 col-md-3">' +
+                            '  <div class="position-relative scene-img-wrapper' + (isSelected ? ' selected' : '') + '"' +
+                            '       data-scene-id="' + img.id + '" data-url="' + url + '">' +
+                            '    <img src="' + url + '" class="img-fluid rounded" style="cursor:pointer; aspect-ratio:16/9; object-fit:cover; width:100%;">' +
+                            (isSelected ? '<span class="badge bg-success position-absolute top-0 end-0 m-1"><i class="bi bi-check-lg"></i> Selected</span>' : '') +
+                            '  </div>' +
+                            '</div>';
+                    });
+
+                    $container.append(
+                        '<div class="card mb-3 scene-image-card" data-scene-id="' + img.id + '">' +
+                        '  <div class="card-body p-2">' +
+                        '    <div class="d-flex justify-content-between align-items-center mb-2">' +
+                        '      <span class="fw-semibold small text-muted">P' + img.scene_index + '</span>' +
+                        '      <button class="btn btn-sm btn-outline-warning btn-regen-scene py-0 px-2" ' +
+                        '              data-para-id="' + (para.id || '') + '" title="Regenerate">' +
+                        '        <i class="bi bi-arrow-clockwise me-1"></i>Regenerate' +
+                        '      </button>' +
+                        '    </div>' +
+                        '    <div class="text-muted small mb-2" style="font-size:0.78rem;">' + (sceneText || img.prompt || '') + '</div>' +
+                        '    <div class="row g-2">' + imagesHtml + '</div>' +
+                        '  </div>' +
+                        '</div>'
+                    );
+                });
+            });
+        });
+    }
+
+    // Select image click
+    $(document).on('click', '.scene-img-wrapper', function() {
+        var sceneId = $(this).data('scene-id');
+        var url = $(this).data('url');
+        var $card = $(this).closest('.scene-image-card');
+
+        // Optimistic UI
+        $card.find('.scene-img-wrapper').removeClass('selected').find('.badge').remove();
+        $(this).addClass('selected').append(
+            '<span class="badge bg-success position-absolute top-0 end-0 m-1"><i class="bi bi-check-lg"></i> Selected</span>'
+        );
+
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/images/select',
+            method: 'POST',
+            data: JSON.stringify({ scene_image_id: sceneId, selected_url: url }),
+            success: function() {
+                showToast('Image selected!', 'success');
+            },
+            error: function(xhr) {
+                showToast(xhr.responseJSON ? xhr.responseJSON.error : 'Failed to select.', 'danger');
+            }
+        });
+    });
+
+    // Regenerate single scene
+    $(document).on('click', '.btn-regen-scene', function(e) {
+        e.stopPropagation();
+        var $btn = $(this);
+        var paraId = $btn.data('para-id');
+        if (!paraId) return;
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> Generating...');
+
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/images/paragraph/' + paraId,
+            method: 'POST',
+            data: '{}',
+            success: function() {
+                showToast('Images regenerated!', 'success');
+                imagesLoaded = false;
+                loadImageResults();
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Image generation failed.';
+                showToast(msg, 'danger');
+                $btn.prop('disabled', false).html('<i class="bi bi-arrow-clockwise me-1"></i>Regenerate');
+            }
+        });
+    });
 
     // Download all audio files one by one
     $('#btn-download-all-audio').on('click', function() {

@@ -174,6 +174,22 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
 
+/* ─── Scene image selection ─── */
+.scene-img-wrapper {
+    border: 3px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+
+.scene-img-wrapper:hover {
+    border-color: #0d6efd;
+}
+
+.scene-img-wrapper.selected {
+    border-color: #198754;
+}
+
 /* ─── Responsive tables ─── */
 @media (max-width: 767.98px) {
     .table th, .table td {

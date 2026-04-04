@@ -14,8 +14,8 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" data-bs-toggle="tab" href="#tab-midjourney">
-            <i class="bi bi-image me-1"></i> Midjourney
+        <a class="nav-link" data-bs-toggle="tab" href="#tab-image">
+            <i class="bi bi-image me-1"></i> Image
         </a>
     </li>
     <li class="nav-item">
@@ -154,59 +154,140 @@
         </div>
     </div>
 
-    <!-- Midjourney Settings -->
-    <div class="tab-pane fade" id="tab-midjourney">
+    <!-- Image Settings -->
+    <div class="tab-pane fade" id="tab-image">
         <div class="card stat-card">
             <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Midjourney integration is planned for a future update. Configure settings now for when it's ready.
-                </div>
-                <div class="row g-3">
-                    <div class="col-md-8">
-                        <label class="form-label fw-bold">Style Preset</label>
-                        <input type="text" class="form-control settings-input" data-section="midjourney" data-key="style_preset"
-                               placeholder="e.g., cinematic dark moody historical">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Aspect Ratio</label>
-                        <select class="form-select settings-input" data-section="midjourney" data-key="aspect_ratio">
-                            <option value="9:16">9:16 (Shorts)</option>
-                            <option value="16:9">16:9 (Standard)</option>
-                            <option value="1:1">1:1 (Square)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Quality</label>
-                        <select class="form-select settings-input" data-section="midjourney" data-key="quality">
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">MJ Version</label>
-                        <select class="form-select settings-input" data-section="midjourney" data-key="version">
-                            <option value="v6.1">v6.1</option>
-                            <option value="v6">v6</option>
-                            <option value="v5.2">v5.2</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Negative Prompt</label>
-                        <textarea class="form-control settings-input" data-section="midjourney" data-key="negative_prompt"
-                                  rows="2" placeholder="Elements to exclude..."></textarea>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Character References (image URLs, one per line)</label>
-                        <textarea class="form-control settings-input" data-section="midjourney" data-key="character_refs"
-                                  rows="3" placeholder="https://example.com/character1.png"></textarea>
+                <!-- Provider Selector -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Image Provider</label>
+                    <div class="d-flex gap-4">
+                        <div class="form-check">
+                            <input class="form-check-input settings-input" type="radio" name="imageProvider"
+                                   id="img-provider-midjourney" data-section="image" data-key="provider" value="midjourney">
+                            <label class="form-check-label" for="img-provider-midjourney">Midjourney (Manual)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input settings-input" type="radio" name="imageProvider"
+                                   id="img-provider-leonardo" data-section="image" data-key="provider" value="leonardo">
+                            <label class="form-check-label" for="img-provider-leonardo">Leonardo.ai (Auto)</label>
+                        </div>
                     </div>
                 </div>
-                <div class="mt-4">
-                    <button class="btn btn-primary btn-save-settings" data-section="midjourney">
-                        <i class="bi bi-check-lg me-1"></i> Save
-                    </button>
+
+                <!-- Midjourney Settings -->
+                <div class="image-provider-group" data-provider="midjourney">
+                    <div class="alert alert-warning py-2 mb-3">
+                        <i class="bi bi-hand-index me-1"></i>
+                        Midjourney는 API를 지원하지 않아 수동으로 이미지를 생성해야 합니다. 아래 설정은 프롬프트 생성 시 참고됩니다.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Style Preset</label>
+                            <input type="text" class="form-control settings-input" data-section="midjourney" data-key="style_preset"
+                                   placeholder="e.g., cinematic dark moody historical">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Aspect Ratio</label>
+                            <select class="form-select settings-input" data-section="midjourney" data-key="aspect_ratio">
+                                <option value="9:16">9:16 (Shorts)</option>
+                                <option value="16:9">16:9 (Standard)</option>
+                                <option value="1:1">1:1 (Square)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Quality</label>
+                            <select class="form-select settings-input" data-section="midjourney" data-key="quality">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">MJ Version</label>
+                            <select class="form-select settings-input" data-section="midjourney" data-key="version">
+                                <option value="v6.1">v6.1</option>
+                                <option value="v6">v6</option>
+                                <option value="v5.2">v5.2</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Negative Prompt</label>
+                            <textarea class="form-control settings-input" data-section="midjourney" data-key="negative_prompt"
+                                      rows="2" placeholder="Elements to exclude..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Character References (image URLs, one per line)</label>
+                            <textarea class="form-control settings-input" data-section="midjourney" data-key="character_refs"
+                                      rows="3" placeholder="https://example.com/character1.png"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button class="btn btn-primary btn-save-settings" data-section="midjourney">
+                            <i class="bi bi-check-lg me-1"></i> Save
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Leonardo.ai Settings -->
+                <div class="image-provider-group d-none" data-provider="leonardo">
+                    <div class="alert alert-success py-2 mb-3">
+                        <i class="bi bi-robot me-1"></i>
+                        Leonardo.ai는 파이프라인에서 자동으로 이미지를 생성합니다.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Model ID</label>
+                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="model_id"
+                                   placeholder="Leave empty for default model">
+                            <div class="form-text">Leonardo platform model UUID (빈칸이면 기본 모델 사용)</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Images per Scene</label>
+                            <select class="form-select settings-input" data-section="leonardo" data-key="num_images">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Preset Style</label>
+                            <select class="form-select settings-input" data-section="leonardo" data-key="preset_style">
+                                <option value="CINEMATIC">Cinematic</option>
+                                <option value="DYNAMIC">Dynamic</option>
+                                <option value="ANIME">Anime</option>
+                                <option value="PHOTOGRAPHY">Photography</option>
+                                <option value="ILLUSTRATION">Illustration</option>
+                                <option value="GENERAL">General</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Width</label>
+                            <input type="number" class="form-control settings-input" data-section="leonardo" data-key="width"
+                                   min="256" max="1536" step="8" value="1024">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Height</label>
+                            <input type="number" class="form-control settings-input" data-section="leonardo" data-key="height"
+                                   min="256" max="1536" step="8" value="576">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Style Prompt Suffix</label>
+                            <textarea class="form-control settings-input" data-section="leonardo" data-key="style_prompt_suffix"
+                                      rows="2" placeholder="Appended to every scene prompt for consistent style"></textarea>
+                            <div class="form-text">각 씬의 프롬프트 뒤에 자동으로 붙는 스타일 지시문</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Negative Prompt</label>
+                            <textarea class="form-control settings-input" data-section="leonardo" data-key="negative_prompt"
+                                      rows="2" placeholder="Elements to exclude from generated images"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button class="btn btn-primary btn-save-settings" data-section="leonardo">
+                            <i class="bi bi-check-lg me-1"></i> Save
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -342,6 +423,24 @@ $(document).ready(function() {
         toggleTtsProvider($(this).val());
     });
 
+    // Image Provider toggle
+    function toggleImageProvider(provider) {
+        $('.image-provider-group').addClass('d-none');
+        $('.image-provider-group[data-provider="' + provider + '"]').removeClass('d-none');
+    }
+    $('input[name="imageProvider"]').on('change', function() {
+        var provider = $(this).val();
+        toggleImageProvider(provider);
+        // Save provider selection immediately
+        $.ajax({
+            url: '/settings/api/image',
+            method: 'PUT',
+            data: JSON.stringify({ provider: provider }),
+            success: function() { showToast('Image provider changed to ' + provider, 'success'); },
+            error: function() { showToast('Failed to save provider.', 'danger'); }
+        });
+    });
+
     // Slider value display
     $('input[type="range"]').on('input', function() {
         var key = $(this).data('key');
@@ -420,7 +519,7 @@ $(document).ready(function() {
     });
 
     // Load settings on page load
-    ['tts', 'midjourney', 'general', 'api_keys'].forEach(function(section) {
+    ['tts', 'image', 'leonardo', 'midjourney', 'general', 'api_keys'].forEach(function(section) {
         $.getJSON('/settings/api/' + section, function(data) {
             Object.keys(data).forEach(function(key) {
                 var $el = $('.settings-input[data-section="' + section + '"][data-key="' + key + '"]');
@@ -438,6 +537,10 @@ $(document).ready(function() {
             // Toggle TTS provider panel after loading
             if (section === 'tts' && data.provider) {
                 toggleTtsProvider(data.provider);
+            }
+            // Toggle Image provider panel after loading
+            if (section === 'image' && data.provider) {
+                toggleImageProvider(data.provider);
             }
         });
     });

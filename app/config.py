@@ -29,6 +29,9 @@ class Config:
     ELEVENLABS_KO_VOICE_ID = os.environ.get('ELEVENLABS_KO_VOICE_ID', '')
     ELEVENLABS_EN_VOICE_ID = os.environ.get('ELEVENLABS_EN_VOICE_ID', '')
 
+    # Leonardo.ai
+    LEONARDO_API_KEY = os.environ.get('LEONARDO_API_KEY', '')
+
     # YouTube
     YOUTUBE_CLIENT_ID = os.environ.get('YOUTUBE_CLIENT_ID', '')
     YOUTUBE_CLIENT_SECRET = os.environ.get('YOUTUBE_CLIENT_SECRET', '')
