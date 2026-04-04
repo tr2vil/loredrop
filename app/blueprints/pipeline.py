@@ -273,3 +273,24 @@ def select_image(run_id):
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@pipeline_bp.route('/api/<int:run_id>/images/vary', methods=['POST'])
+def vary_image(run_id):
+    """Generate variations of a specific image (subtle or strong)."""
+    data = request.get_json() or {}
+    scene_image_id = data.get('scene_image_id')
+    source_url = data.get('source_url')
+    strength = data.get('strength', 'subtle')  # 'subtle' or 'strong'
+
+    if not scene_image_id or not source_url:
+        return jsonify({'error': 'scene_image_id and source_url are required'}), 400
+    if strength not in ('subtle', 'strong'):
+        return jsonify({'error': 'strength must be "subtle" or "strong"'}), 400
+
+    try:
+        from ..services.media.image_service import vary_scene_image
+        result = vary_scene_image(scene_image_id, source_url, strength)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

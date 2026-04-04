@@ -197,6 +197,34 @@
         <div class="text-muted">Waiting...</div>
     </div>
 </div>
+
+<!-- Image Lightbox Modal -->
+<div class="modal fade" id="imageLightbox" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <span class="fw-semibold small" id="lightbox-title">Image</span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-2">
+                <img id="lightbox-img" src="" class="img-fluid rounded" style="max-height:70vh;">
+            </div>
+            <div class="modal-footer py-2 d-flex justify-content-between">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" id="lightbox-vary-subtle">
+                        <i class="bi bi-brush me-1"></i>Subtle
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" id="lightbox-vary-strong">
+                        <i class="bi bi-lightning me-1"></i>Strong
+                    </button>
+                </div>
+                <button class="btn btn-sm btn-success" id="lightbox-select">
+                    <i class="bi bi-check-lg me-1"></i>Select This Image
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}

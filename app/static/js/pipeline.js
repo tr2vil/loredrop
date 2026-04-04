@@ -18,6 +18,10 @@ $(document).ready(function() {
     var lastLogCount = 0;
     var scriptLoaded = false;
 
+    // Helper: extract URL from image data (handles both {id,url} objects and plain strings)
+    function imgUrl(item) { return typeof item === 'object' ? item.url : item; }
+    function imgId(item) { return typeof item === 'object' ? item.id : null; }
+
     // ─── Poll status ───
     function pollStatus() {
         $.getJSON('/pipeline/api/' + RUN_ID + '/status', function(data) {
@@ -99,7 +103,13 @@ $(document).ready(function() {
                         if (step.step_name === 'script_generated' && !koLoaded) loadKoScript();
                         if (step.step_name === 'script_translated' && !enLoaded) loadEnScript();
                         if (step.step_name === 'tts_completed' && !ttsLoaded) loadTtsResults();
-                        if (step.step_name === 'images_generated' && !imagesLoaded) loadImageResults();
+                        if (step.step_name === 'images_generated' && !imagesLoaded) {
+                            loadImageResults();
+                            // Also refresh EN script panel to show new images inline
+                            enLoaded = false;
+                            enSceneImages = {};
+                            loadEnScript();
+                        }
                     } else if (step.status === 'pending' && prevCompleted) {
                         $actions.append(
                             '<button class="btn btn-sm btn-outline-primary btn-execute-step" data-run-id="' + RUN_ID + '" data-step="' + step.step_name + '">' +
@@ -243,8 +253,21 @@ $(document).ready(function() {
         });
     });
 
-    // ─── EN Script (structured paragraphs + per-paragraph TTS) ───
+    // ─── EN Script (structured paragraphs + per-paragraph TTS + Images) ───
+    var enSceneImages = {}; // scene_index -> scene image data
+
     function loadEnScript() {
+        // Load scene images first, then render paragraphs
+        $.getJSON('/pipeline/api/' + RUN_ID + '/images', function(imgData) {
+            (imgData.images || []).forEach(function(img) {
+                enSceneImages[img.scene_index] = img;
+            });
+        }).always(function() {
+            _renderEnParagraphs();
+        });
+    }
+
+    function _renderEnParagraphs() {
         $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(data) {
             enLoaded = true;
             var $container = $('#en-paragraphs-container').empty();
@@ -254,12 +277,12 @@ $(document).ready(function() {
                 totalWords += words;
                 var moodBadge = p.mood ? '<span class="badge bg-' + getMoodColor(p.mood) + ' bg-opacity-10 text-' + getMoodColor(p.mood) + '">' + p.mood + '</span>' : '';
 
-                // Audio controls: show player if audio exists, otherwise show generate button
+                // Audio controls
                 var audioHtml = '';
                 if (p.audio_path) {
                     var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + p.paragraph_index + '.mp3';
                     audioHtml =
-                        '<div class="en-para-audio mt-1 d-flex align-items-center gap-2">' +
+                        '<div class="en-para-audio d-flex align-items-center gap-2">' +
                         '  <audio controls preload="none" src="' + audioUrl + '" style="height:32px; flex-grow:1;"></audio>' +
                         '  <a href="' + audioUrl + '/download" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Download">' +
                         '    <i class="bi bi-download"></i>' +
@@ -270,9 +293,42 @@ $(document).ready(function() {
                         '</div>';
                 } else {
                     audioHtml =
-                        '<div class="en-para-audio mt-1">' +
+                        '<div class="en-para-audio">' +
                         '  <button class="btn btn-sm btn-outline-primary btn-para-tts" data-para-id="' + p.id + '">' +
-                        '    <i class="bi bi-mic me-1"></i>Generate TTS' +
+                        '    <i class="bi bi-mic me-1"></i>TTS' +
+                        '  </button>' +
+                        '</div>';
+                }
+
+                // Image controls
+                var sceneImg = enSceneImages[p.paragraph_index];
+                var imageHtml = '';
+                if (sceneImg && sceneImg.image_urls && sceneImg.image_urls.length) {
+                    var thumbs = '';
+                    sceneImg.image_urls.forEach(function(item) {
+                        var url = imgUrl(item);
+                        var isSelected = (url === sceneImg.selected_url);
+                        thumbs +=
+                            '<div class="img-thumb-click' + (isSelected ? ' selected' : '') + '"' +
+                            '     data-scene-id="' + sceneImg.id + '" data-url="' + url + '"' +
+                            '     style="position:relative; cursor:pointer; border: 2px solid ' + (isSelected ? '#198754' : 'transparent') + '; border-radius: 4px; overflow:hidden;">' +
+                            '  <img src="' + url + '" style="width:64px; height:64px; object-fit:cover; display:block;">' +
+                            (isSelected ? '<span class="badge bg-success" style="position:absolute;top:0;right:0;font-size:.55rem;"><i class="bi bi-check"></i></span>' : '') +
+                            '</div>';
+                    });
+                    imageHtml =
+                        '<div class="en-para-images">' +
+                        '  <div class="d-flex align-items-center gap-1 flex-wrap">' + thumbs +
+                        '    <button class="btn btn-sm btn-outline-warning btn-para-img py-0 px-1" data-para-id="' + p.id + '" title="Regenerate Images">' +
+                        '      <i class="bi bi-arrow-clockwise"></i>' +
+                        '    </button>' +
+                        '  </div>' +
+                        '</div>';
+                } else if (p.scene_direction) {
+                    imageHtml =
+                        '<div class="en-para-images">' +
+                        '  <button class="btn btn-sm btn-outline-success btn-para-img" data-para-id="' + p.id + '">' +
+                        '    <i class="bi bi-image me-1"></i>Image' +
                         '  </button>' +
                         '</div>';
                 }
@@ -286,7 +342,7 @@ $(document).ready(function() {
                     '    </div>' +
                     '    <textarea class="form-control form-control-sm en-para-text mb-1" rows="3" ' +
                     '              style="font-size: 0.88rem; line-height: 1.6;">' + (p.text || '') + '</textarea>' +
-                    '    <div class="d-flex gap-2">' +
+                    '    <div class="d-flex gap-2 mb-1">' +
                     '      <div class="flex-grow-1">' +
                     '        <input class="form-control form-control-sm en-para-scene" placeholder="Scene direction..." ' +
                     '               value="' + (p.scene_direction || '').replace(/"/g, '&quot;') + '" ' +
@@ -297,7 +353,10 @@ $(document).ready(function() {
                     '               value="' + (p.mood || '').replace(/"/g, '&quot;') + '" style="font-size: 0.8rem;">' +
                     '      </div>' +
                     '    </div>' +
-                    audioHtml +
+                    '    <div class="d-flex gap-2 align-items-start mt-1">' +
+                    '      <div class="flex-grow-1">' + audioHtml + '</div>' +
+                    '      <div>' + imageHtml + '</div>' +
+                    '    </div>' +
                     '  </div>' +
                     '</div>'
                 );
@@ -308,6 +367,33 @@ $(document).ready(function() {
             $('#en-paragraphs-container').html('<p class="text-muted small text-center py-3">Not generated yet.</p>');
         });
     }
+
+    // ─── Per-paragraph Image generation ───
+    $(document).on('click', '.btn-para-img', function() {
+        var $btn = $(this);
+        var paraId = $btn.data('para-id');
+        var $card = $btn.closest('.en-para-card');
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span>');
+
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/images/paragraph/' + paraId,
+            method: 'POST',
+            data: '{}',
+            success: function(result) {
+                showToast('Images generated for P' + $card.data('para-index') + '!', 'success');
+                // Refresh scene images cache and re-render
+                enSceneImages[result.scene_index] = result;
+                enLoaded = false;
+                loadEnScript();
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Image generation failed.';
+                showToast(msg, 'danger');
+                $btn.prop('disabled', false).html('<i class="bi bi-image me-1"></i>Image');
+            }
+        });
+    });
 
     // ─── Per-paragraph TTS generation ───
     $(document).on('click', '.btn-para-tts', function() {
@@ -432,14 +518,16 @@ $(document).ready(function() {
                     var selectedUrl = img.selected_url || '';
 
                     var imagesHtml = '';
-                    (img.image_urls || []).forEach(function(url, idx) {
+                    (img.image_urls || []).forEach(function(item) {
+                        var url = imgUrl(item);
                         var isSelected = (url === selectedUrl);
                         imagesHtml +=
                             '<div class="col-6 col-md-3">' +
-                            '  <div class="position-relative scene-img-wrapper' + (isSelected ? ' selected' : '') + '"' +
-                            '       data-scene-id="' + img.id + '" data-url="' + url + '">' +
-                            '    <img src="' + url + '" class="img-fluid rounded" style="cursor:pointer; aspect-ratio:16/9; object-fit:cover; width:100%;">' +
-                            (isSelected ? '<span class="badge bg-success position-absolute top-0 end-0 m-1"><i class="bi bi-check-lg"></i> Selected</span>' : '') +
+                            '  <div class="position-relative img-thumb-click' + (isSelected ? ' selected' : '') + '"' +
+                            '       data-scene-id="' + img.id + '" data-url="' + url + '"' +
+                            '       style="cursor:pointer; border: 2px solid ' + (isSelected ? '#198754' : 'transparent') + '; border-radius: 6px; overflow:hidden;">' +
+                            '    <img src="' + url + '" class="img-fluid rounded" style="aspect-ratio:9/16; object-fit:cover; width:100%;">' +
+                            (isSelected ? '<span class="badge bg-success position-absolute top-0 end-0 m-1"><i class="bi bi-check-lg"></i></span>' : '') +
                             '  </div>' +
                             '</div>';
                     });
@@ -464,30 +552,75 @@ $(document).ready(function() {
         });
     }
 
-    // Select image click
-    $(document).on('click', '.scene-img-wrapper', function() {
-        var sceneId = $(this).data('scene-id');
-        var url = $(this).data('url');
-        var $card = $(this).closest('.scene-image-card');
+    // ─── Image Lightbox (click to enlarge) ───
+    var lightboxSceneId = null;
+    var lightboxUrl = null;
 
-        // Optimistic UI
-        $card.find('.scene-img-wrapper').removeClass('selected').find('.badge').remove();
-        $(this).addClass('selected').append(
-            '<span class="badge bg-success position-absolute top-0 end-0 m-1"><i class="bi bi-check-lg"></i> Selected</span>'
-        );
+    $(document).on('click', '.img-thumb-click', function(e) {
+        e.stopPropagation();
+        lightboxSceneId = $(this).data('scene-id');
+        lightboxUrl = $(this).data('url');
+        var sceneIndex = $(this).closest('[data-scene-id]').closest('.scene-image-card,.en-para-card').find('.text-muted.fw-semibold,.fw-semibold.small').first().text();
+        $('#lightbox-title').text(sceneIndex || 'Image');
+        $('#lightbox-img').attr('src', lightboxUrl);
+        var modal = new bootstrap.Modal(document.getElementById('imageLightbox'));
+        modal.show();
+    });
 
+    // Select from lightbox
+    $('#lightbox-select').on('click', function() {
+        if (!lightboxSceneId || !lightboxUrl) return;
+        var $btn = $(this).prop('disabled', true);
         $.ajax({
             url: '/pipeline/api/' + RUN_ID + '/images/select',
             method: 'POST',
-            data: JSON.stringify({ scene_image_id: sceneId, selected_url: url }),
+            data: JSON.stringify({ scene_image_id: lightboxSceneId, selected_url: lightboxUrl }),
             success: function() {
                 showToast('Image selected!', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('imageLightbox')).hide();
+                // Refresh both panels
+                imagesLoaded = false; loadImageResults();
+                enLoaded = false; enSceneImages = {}; loadEnScript();
             },
             error: function(xhr) {
-                showToast(xhr.responseJSON ? xhr.responseJSON.error : 'Failed to select.', 'danger');
-            }
+                showToast(xhr.responseJSON ? xhr.responseJSON.error : 'Failed.', 'danger');
+            },
+            complete: function() { $btn.prop('disabled', false); }
         });
     });
+
+    // Variation from lightbox (Subtle / Strong)
+    function doVariation(strength) {
+        if (!lightboxSceneId || !lightboxUrl) return;
+        var $modal = $('#imageLightbox .modal-footer');
+        $modal.find('.btn').prop('disabled', true);
+        $modal.find('#lightbox-vary-' + strength).html(
+            '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> ' +
+            (strength === 'subtle' ? 'Subtle' : 'Strong') + '...'
+        );
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/images/vary',
+            method: 'POST',
+            data: JSON.stringify({ scene_image_id: lightboxSceneId, source_url: lightboxUrl, strength: strength }),
+            success: function(result) {
+                showToast('Variation generated! (' + strength + ')', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('imageLightbox')).hide();
+                imagesLoaded = false; loadImageResults();
+                enLoaded = false; enSceneImages = {}; loadEnScript();
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Variation failed.';
+                showToast(msg, 'danger');
+            },
+            complete: function() {
+                $modal.find('.btn').prop('disabled', false);
+                $('#lightbox-vary-subtle').html('<i class="bi bi-brush me-1"></i>Subtle');
+                $('#lightbox-vary-strong').html('<i class="bi bi-lightning me-1"></i>Strong');
+            }
+        });
+    }
+    $('#lightbox-vary-subtle').on('click', function() { doVariation('subtle'); });
+    $('#lightbox-vary-strong').on('click', function() { doVariation('strong'); });
 
     // Regenerate single scene
     $(document).on('click', '.btn-regen-scene', function(e) {

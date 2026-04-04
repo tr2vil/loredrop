@@ -6,13 +6,32 @@ from ..system.settings_service import get_settings
 from . import leonardo_client
 
 
-def _build_prompt(scene_direction, leo_settings):
-    """Combine scene direction with style suffix."""
-    prompt = scene_direction.strip()
-    suffix = leo_settings.get('style_prompt_suffix', '').strip()
-    if suffix:
-        prompt = f'{prompt}, {suffix}'
-    return prompt
+def _build_prompt(scene_direction, mood, leo_settings):
+    """Build a structured prompt from scene direction, mood, and channel-wide style settings.
+
+    Final structure:
+      {art_style} of {scene_direction}, {mood} atmosphere,
+      {color_palette}, {rendering_style}, {consistent_elements}
+    """
+    parts = []
+
+    art_style = leo_settings.get('art_style', '').strip()
+    scene = scene_direction.strip()
+
+    if art_style and scene:
+        parts.append(f'{art_style} of {scene}')
+    elif scene:
+        parts.append(scene)
+
+    if mood and mood.strip():
+        parts.append(f'{mood.strip()} atmosphere')
+
+    for key in ('color_palette', 'rendering_style', 'consistent_elements'):
+        val = leo_settings.get(key, '').strip()
+        if val:
+            parts.append(val)
+
+    return ', '.join(parts)
 
 
 def generate_images(selected_topic_id, run_id, log_fn=None):
@@ -36,14 +55,20 @@ def generate_images(selected_topic_id, run_id, log_fn=None):
     # 2. Load Leonardo settings
     leo_settings = get_settings('leonardo')
     num_images = int(leo_settings.get('num_images', '4'))
-    width = int(leo_settings.get('width', '1024'))
-    height = int(leo_settings.get('height', '576'))
+    width = int(leo_settings.get('width', '576'))
+    height = int(leo_settings.get('height', '1024'))
     model_id = leo_settings.get('model_id', '') or None
     preset_style = leo_settings.get('preset_style', '') or None
+    if preset_style == 'NONE':
+        preset_style = None
     negative_prompt = leo_settings.get('negative_prompt', '') or None
+    init_image_id = leo_settings.get('style_ref_image_id', '') or None
+    init_strength = float(leo_settings.get('style_ref_strength', '0.5')) if init_image_id else None
 
     if log_fn:
         log_fn(f'Images: Starting generation for {len(paragraphs)} scenes')
+        if init_image_id:
+            log_fn(f'Images: Style reference active (strength={init_strength})')
 
     # 3. Initialize progress tracking
     progress_key = f'pipeline:run:{run_id}:images_progress'
@@ -70,7 +95,7 @@ def generate_images(selected_topic_id, run_id, log_fn=None):
                 log_fn(f'Images: P{para.paragraph_index} has no scene direction, skipping.')
             continue
 
-        prompt = _build_prompt(scene_text, leo_settings)
+        prompt = _build_prompt(scene_text, para.mood, leo_settings)
 
         if log_fn:
             log_fn(f'Images: Generating P{para.paragraph_index} ({i + 1}/{len(paragraphs)})...')
@@ -84,6 +109,8 @@ def generate_images(selected_topic_id, run_id, log_fn=None):
             model_id=model_id,
             preset_style=preset_style,
             negative_prompt=negative_prompt,
+            init_image_id=init_image_id,
+            init_strength=init_strength,
         )
 
         if log_fn:
@@ -146,14 +173,18 @@ def generate_single_scene(paragraph_id, run_id):
         raise ValueError('Paragraph has no scene direction.')
 
     leo_settings = get_settings('leonardo')
-    prompt = _build_prompt(scene_text, leo_settings)
+    prompt = _build_prompt(scene_text, para.mood, leo_settings)
 
     num_images = int(leo_settings.get('num_images', '4'))
-    width = int(leo_settings.get('width', '1024'))
-    height = int(leo_settings.get('height', '576'))
+    width = int(leo_settings.get('width', '576'))
+    height = int(leo_settings.get('height', '1024'))
     model_id = leo_settings.get('model_id', '') or None
     preset_style = leo_settings.get('preset_style', '') or None
+    if preset_style == 'NONE':
+        preset_style = None
     negative_prompt = leo_settings.get('negative_prompt', '') or None
+    init_image_id = leo_settings.get('style_ref_image_id', '') or None
+    init_strength = float(leo_settings.get('style_ref_strength', '0.5')) if init_image_id else None
 
     generation_id = leonardo_client.generate_images(
         prompt=prompt,
@@ -163,6 +194,8 @@ def generate_single_scene(paragraph_id, run_id):
         model_id=model_id,
         preset_style=preset_style,
         negative_prompt=negative_prompt,
+        init_image_id=init_image_id,
+        init_strength=init_strength,
     )
 
     image_urls = leonardo_client.wait_for_generation(generation_id)
@@ -192,13 +225,33 @@ def generate_single_scene(paragraph_id, run_id):
     return scene_img.to_dict()
 
 
+def _extract_urls(image_data):
+    """Extract URLs from image_urls (handles both [{id,url},...] and [url,...] formats)."""
+    if not image_data:
+        return []
+    if isinstance(image_data[0], dict):
+        return [item['url'] for item in image_data]
+    return image_data
+
+
+def _find_image_id(image_data, url):
+    """Find the Leonardo image ID for a given URL (returns None for old format)."""
+    if not image_data:
+        return None
+    for item in image_data:
+        if isinstance(item, dict) and item.get('url') == url:
+            return item.get('id')
+    return None
+
+
 def select_image(scene_image_id, selected_url):
     """Select an image for a scene. Updates SceneImage and ScriptParagraph."""
     scene_img = SceneImage.query.get(scene_image_id)
     if not scene_img:
         raise ValueError('Scene image not found.')
 
-    if selected_url not in (scene_img.image_urls or []):
+    urls = _extract_urls(scene_img.image_urls)
+    if selected_url not in urls:
         raise ValueError('Selected URL is not in the generated images.')
 
     scene_img.selected_url = selected_url
@@ -235,3 +288,51 @@ def get_scene_images(run_id):
     ).order_by(SceneImage.scene_index).all()
 
     return [img.to_dict() for img in images]
+
+
+def vary_scene_image(scene_image_id, source_url, strength='subtle'):
+    """Generate variations of a specific image.
+
+    strength: 'subtle' (init_strength=0.25) or 'strong' (init_strength=0.65).
+    """
+    scene_img = SceneImage.query.get(scene_image_id)
+    if not scene_img:
+        raise ValueError('Scene image not found.')
+
+    # Find the Leonardo image ID for the source URL
+    leo_image_id = _find_image_id(scene_img.image_urls, source_url)
+    if not leo_image_id:
+        raise ValueError('Image ID not found. Re-generate the scene first.')
+
+    init_strength = 0.25 if strength == 'subtle' else 0.65
+
+    leo_settings = get_settings('leonardo')
+    width = int(leo_settings.get('width', '576'))
+    height = int(leo_settings.get('height', '1024'))
+    model_id = leo_settings.get('model_id', '') or None
+    preset_style = leo_settings.get('preset_style', '') or None
+    if preset_style == 'NONE':
+        preset_style = None
+    negative_prompt = leo_settings.get('negative_prompt', '') or None
+
+    generation_id = leonardo_client.generate_variation(
+        generated_image_id=leo_image_id,
+        prompt=scene_img.prompt,
+        init_strength=init_strength,
+        num_images=int(leo_settings.get('num_images', '4')),
+        width=width,
+        height=height,
+        model_id=model_id,
+        preset_style=preset_style,
+        negative_prompt=negative_prompt,
+    )
+
+    image_data = leonardo_client.wait_for_generation(generation_id)
+
+    # Update scene image with new results
+    scene_img.generation_id = generation_id
+    scene_img.image_urls = image_data
+    scene_img.selected_url = None
+    db.session.commit()
+
+    return scene_img.to_dict()

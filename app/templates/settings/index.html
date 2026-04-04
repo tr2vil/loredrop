@@ -234,13 +234,97 @@
                     <div class="alert alert-success py-2 mb-3">
                         <i class="bi bi-robot me-1"></i>
                         Leonardo.ai는 파이프라인에서 자동으로 이미지를 생성합니다.
+                        아래 설정은 채널 전체 영상의 비주얼 일관성을 유지하기 위한 공통 스타일 요소입니다.
                     </div>
+
+                    <!-- Visual Consistency Settings -->
+                    <h6 class="fw-bold mb-3"><i class="bi bi-palette me-1"></i>Visual Consistency (채널 공통 스타일)</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Art Style <span class="text-muted fw-normal">- 그림체/화풍</span></label>
+                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="art_style"
+                                   placeholder="e.g., A whimsical watercolor illustration">
+                            <div class="form-text">프롬프트 맨 앞에 위치. 모든 이미지의 기본 화풍을 결정합니다.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Color Palette <span class="text-muted fw-normal">- 색감/톤</span></label>
+                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="color_palette"
+                                   placeholder="e.g., soft teal and warm beige tones">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Rendering Style <span class="text-muted fw-normal">- 표현 기법</span></label>
+                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="rendering_style"
+                                   placeholder="e.g., delicate ink linework, dreamy storybook aesthetic">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Consistent Elements <span class="text-muted fw-normal">- 공통 요소/분위기</span></label>
+                            <textarea class="form-control settings-input" data-section="leonardo" data-key="consistent_elements"
+                                      rows="2" placeholder="e.g., magical sparkles and light rays, cozy enchanting atmosphere"></textarea>
+                            <div class="form-text">매 이미지에 공통으로 들어가는 시각적 요소 (질감, 효과, 분위기 등)</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Negative Prompt <span class="text-muted fw-normal">- 제외 요소</span></label>
+                            <textarea class="form-control settings-input" data-section="leonardo" data-key="negative_prompt"
+                                      rows="2" placeholder="e.g., blurry, low quality, text, watermark"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Prompt Preview -->
+                    <div class="card bg-dark text-light mb-4">
+                        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                            <span class="small fw-bold"><i class="bi bi-eye me-1"></i>Prompt Preview</span>
+                            <span class="badge bg-secondary">scene/mood는 대본에서 자동 삽입</span>
+                        </div>
+                        <div class="card-body py-2" style="font-family: 'Consolas', monospace; font-size: 0.8rem;" id="leonardo-prompt-preview">
+                            <span class="text-info">{art_style}</span> of <span class="text-warning">{scene_direction}</span>,
+                            <span class="text-success">{mood}</span> atmosphere,
+                            <span class="text-info">{color_palette}</span>,
+                            <span class="text-info">{rendering_style}</span>,
+                            <span class="text-info">{consistent_elements}</span>
+                        </div>
+                    </div>
+
+                    <!-- Style Reference Image -->
+                    <h6 class="fw-bold mb-3"><i class="bi bi-image me-1"></i>Style Reference Image (스타일 참조 이미지)</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control" id="style-ref-url-input"
+                                       placeholder="이미지 URL을 입력하세요 (e.g., https://example.com/style.png)">
+                                <button class="btn btn-outline-primary" id="btn-upload-style-ref" style="white-space:nowrap;">
+                                    <i class="bi bi-cloud-upload me-1"></i>Upload
+                                </button>
+                            </div>
+                            <div class="form-text">미드저니의 이미지 참조(--iw)와 동일한 역할. URL에서 이미지를 다운로드하여 Leonardo에 업로드합니다.</div>
+                        </div>
+                        <div class="col-12" id="style-ref-preview" style="display:none;">
+                            <div class="d-flex align-items-center gap-3 p-2 bg-light rounded">
+                                <img id="style-ref-thumb" src="" style="width:80px; height:80px; object-fit:cover; border-radius:4px;">
+                                <div class="flex-grow-1">
+                                    <div class="small fw-bold text-success"><i class="bi bi-check-circle me-1"></i>Style Reference Active</div>
+                                    <div class="text-muted small text-truncate" id="style-ref-id-display"></div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger" id="btn-remove-style-ref" title="Remove">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Style Reference Strength <span class="text-muted fw-normal" id="style-ref-strength-val">0.5</span></label>
+                            <input type="range" class="form-range settings-input" data-section="leonardo" data-key="style_ref_strength"
+                                   min="0.1" max="0.9" step="0.1" value="0.5">
+                            <div class="form-text">낮을수록 참조 이미지에 가까움 (0.1), 높을수록 프롬프트에 충실 (0.9)</div>
+                        </div>
+                    </div>
+
+                    <!-- Generation Settings -->
+                    <h6 class="fw-bold mb-3"><i class="bi bi-gear me-1"></i>Generation Settings</h6>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Model ID</label>
                             <input type="text" class="form-control settings-input" data-section="leonardo" data-key="model_id"
                                    placeholder="Leave empty for default model">
-                            <div class="form-text">Leonardo platform model UUID (빈칸이면 기본 모델 사용)</div>
+                            <div class="form-text">Leonardo model UUID (빈칸이면 기본 모델)</div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Images per Scene</label>
@@ -253,6 +337,7 @@
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Preset Style</label>
                             <select class="form-select settings-input" data-section="leonardo" data-key="preset_style">
+                                <option value="NONE">None (프롬프트만 사용)</option>
                                 <option value="CINEMATIC">Cinematic</option>
                                 <option value="DYNAMIC">Dynamic</option>
                                 <option value="ANIME">Anime</option>
@@ -264,23 +349,12 @@
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Width</label>
                             <input type="number" class="form-control settings-input" data-section="leonardo" data-key="width"
-                                   min="256" max="1536" step="8" value="1024">
+                                   min="256" max="1536" step="8" value="576">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Height</label>
                             <input type="number" class="form-control settings-input" data-section="leonardo" data-key="height"
-                                   min="256" max="1536" step="8" value="576">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Style Prompt Suffix</label>
-                            <textarea class="form-control settings-input" data-section="leonardo" data-key="style_prompt_suffix"
-                                      rows="2" placeholder="Appended to every scene prompt for consistent style"></textarea>
-                            <div class="form-text">각 씬의 프롬프트 뒤에 자동으로 붙는 스타일 지시문</div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Negative Prompt</label>
-                            <textarea class="form-control settings-input" data-section="leonardo" data-key="negative_prompt"
-                                      rows="2" placeholder="Elements to exclude from generated images"></textarea>
+                                   min="256" max="1536" step="8" value="1024">
                         </div>
                     </div>
                     <div class="mt-4">
@@ -518,6 +592,68 @@ $(document).ready(function() {
         });
     });
 
+    // Style Reference upload
+    $('#btn-upload-style-ref').on('click', function() {
+        var url = $('#style-ref-url-input').val().trim();
+        if (!url) { showToast('이미지 URL을 입력하세요.', 'warning'); return; }
+        var $btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Uploading...');
+        $.ajax({
+            url: '/settings/api/leonardo/upload-style-ref',
+            method: 'POST',
+            data: JSON.stringify({ image_url: url }),
+            success: function(res) {
+                showToast('Style reference uploaded!', 'success');
+                showStyleRefPreview(res.image_url, res.init_image_id);
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Upload failed.';
+                showToast(msg, 'danger');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="bi bi-cloud-upload me-1"></i>Upload');
+            }
+        });
+    });
+
+    $('#btn-remove-style-ref').on('click', function() {
+        $.ajax({
+            url: '/settings/api/leonardo',
+            method: 'PUT',
+            data: JSON.stringify({ style_ref_image_id: '', style_ref_image_url: '' }),
+            success: function() {
+                $('#style-ref-preview').hide();
+                $('#style-ref-url-input').val('');
+                showToast('Style reference removed.', 'info');
+            }
+        });
+    });
+
+    function showStyleRefPreview(url, id) {
+        if (url && id) {
+            $('#style-ref-thumb').attr('src', url);
+            $('#style-ref-id-display').text('ID: ' + id);
+            $('#style-ref-url-input').val(url);
+            $('#style-ref-preview').show();
+        } else {
+            $('#style-ref-preview').hide();
+        }
+    }
+
+    // Leonardo prompt preview
+    function updatePromptPreview() {
+        var art = $('[data-section="leonardo"][data-key="art_style"]').val() || '{art_style}';
+        var color = $('[data-section="leonardo"][data-key="color_palette"]').val() || '{color_palette}';
+        var render = $('[data-section="leonardo"][data-key="rendering_style"]').val() || '{rendering_style}';
+        var elements = $('[data-section="leonardo"][data-key="consistent_elements"]').val() || '{consistent_elements}';
+        var parts = ['<span class="text-info">' + art + '</span> of <span class="text-warning">{scene_direction}</span>'];
+        parts.push('<span class="text-success">{mood}</span> atmosphere');
+        if (color) parts.push('<span class="text-info">' + color + '</span>');
+        if (render) parts.push('<span class="text-info">' + render + '</span>');
+        if (elements) parts.push('<span class="text-info">' + elements + '</span>');
+        $('#leonardo-prompt-preview').html(parts.join(', '));
+    }
+    $(document).on('input', '[data-section="leonardo"][data-key="art_style"], [data-section="leonardo"][data-key="color_palette"], [data-section="leonardo"][data-key="rendering_style"], [data-section="leonardo"][data-key="consistent_elements"]', updatePromptPreview);
+
     // Load settings on page load
     ['tts', 'image', 'leonardo', 'midjourney', 'general', 'api_keys'].forEach(function(section) {
         $.getJSON('/settings/api/' + section, function(data) {
@@ -541,6 +677,11 @@ $(document).ready(function() {
             // Toggle Image provider panel after loading
             if (section === 'image' && data.provider) {
                 toggleImageProvider(data.provider);
+            }
+            // Update Leonardo prompt preview + style ref after settings load
+            if (section === 'leonardo') {
+                updatePromptPreview();
+                showStyleRefPreview(data.style_ref_image_url, data.style_ref_image_id);
             }
         });
     });

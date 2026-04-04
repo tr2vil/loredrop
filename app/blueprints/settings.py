@@ -69,3 +69,35 @@ def test_tts():
         })
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@settings_bp.route('/api/leonardo/upload-style-ref', methods=['POST'])
+def upload_style_ref():
+    """Download an image from URL and upload it to Leonardo as a style reference."""
+    data = request.get_json() or {}
+    image_url = data.get('image_url', '').strip()
+    if not image_url:
+        return jsonify({'error': 'image_url is required'}), 400
+
+    try:
+        from ..services.media import leonardo_client
+
+        # Download the image
+        image_bytes, ext = leonardo_client.download_image_from_url(image_url)
+
+        # Upload to Leonardo
+        init_image_id = leonardo_client.upload_init_image(image_bytes, ext)
+
+        # Save to settings
+        update_settings('leonardo', {
+            'style_ref_image_id': init_image_id,
+            'style_ref_image_url': image_url,
+        })
+
+        return jsonify({
+            'ok': True,
+            'init_image_id': init_image_id,
+            'image_url': image_url,
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
