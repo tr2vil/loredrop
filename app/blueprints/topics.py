@@ -61,7 +61,7 @@ def select_topic(topic_id):
     from ..services.content.topic_service import select_topic as do_select
     from ..services.distribution.telegram_service import send_message
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     video_type = data.get('video_type', 'short')
 
     try:

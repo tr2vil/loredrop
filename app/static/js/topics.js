@@ -215,6 +215,7 @@ $(document).ready(function() {
         $.ajax({
             url: '/topics/' + selectedTopicId + '/select',
             method: 'POST',
+            contentType: 'application/json',
             data: JSON.stringify({video_type: videoType}),
             success: function() {
                 bootstrap.Modal.getInstance(document.getElementById('selectTopicModal')).hide();
