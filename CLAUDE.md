@@ -178,6 +178,7 @@ Redis에 저장. 각 프롬프트는 `system_prompt` + `user_prompt` 쌍.
 | `/reviewer` | 코드 리뷰 (보안, 성능, 일관성, DB/Redis 패턴) | 커밋/PR 전 |
 | `/tester` | API/통합 테스트 (Docker 환경에서 curl 기반 검증) | 구현 완료 후 |
 | `/debugger` | 에러 근본 원인 추적 + 수정 (로그 분석, 상태 비교) | 버그 발생 시 |
+| `/documenter` | CLAUDE.md + README.md 자동 업데이트 (변경사항 분석 → 문서 반영) | 개발 완료 후 문서화 필요 시 |
 
 #### /dev 워크플로우 흐름
 
@@ -190,7 +191,8 @@ Redis에 저장. 각 프롬프트는 `system_prompt` + `user_prompt` 쌍.
   │   ├── 사용자 확인
   │   ├── 구현
   │   ├── /tester → 테스트
-  │   └── /reviewer → 코드 리뷰
+  │   ├── /reviewer → 코드 리뷰
+  │   └── /documenter → 문서화 (조건부)
   │
   ├─ 소규모 작업 (버그 수정, 설정 변경)
   │   ├── 바로 구현
@@ -199,7 +201,7 @@ Redis에 저장. 각 프롬프트는 `system_prompt` + `user_prompt` 쌍.
   └─ 에러 발생 시 → /debugger → 수정 → /tester (최대 3회 반복)
 ```
 
-각 스킬은 개별 호출도 가능: `/reviewer`, `/debugger` 등
+각 스킬은 개별 호출도 가능: `/reviewer`, `/debugger`, `/documenter` 등
 
 ## 개발 규칙
 

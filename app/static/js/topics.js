@@ -39,13 +39,13 @@ $(document).ready(function() {
         if (!details || typeof details !== 'object') return '';
 
         var agentLabels = {
-            'history_verification': {icon: 'bi-book', label: 'History', color: 'primary'},
-            'channel_fit': {icon: 'bi-bullseye', label: 'Channel Fit', color: 'success'},
-            'audience_appeal': {icon: 'bi-people', label: 'Audience', color: 'warning'}
+            'history_verification': {icon: 'bi-book', label: '역사 검증', color: 'primary'},
+            'channel_fit': {icon: 'bi-bullseye', label: '채널 적합도', color: 'success'},
+            'audience_appeal': {icon: 'bi-people', label: '청중 관심도', color: 'warning'}
         };
 
         var html = '<div class="mt-2 pt-2 border-top">';
-        html += '<small class="fw-bold text-muted d-block mb-2"><i class="bi bi-robot me-1"></i>Agent Evaluation</small>';
+        html += '<small class="fw-bold text-muted d-block mb-2"><i class="bi bi-robot me-1"></i>에이전트 평가</small>';
 
         for (var key in agentLabels) {
             var d = details[key];
