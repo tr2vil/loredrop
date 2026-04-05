@@ -15,10 +15,13 @@ $(document).ready(function() {
         'pending': 'bg-light text-muted'
     };
 
-    var lastLogCount = 0;
-    var scriptLoaded = false;
+    // Steps visible in UI (backend still has 6)
+    var VISUAL_STEPS = ['topic_confirmed', 'script_generated', 'script_translated', 'uploaded'];
+    var HIDDEN_STEPS = ['tts_completed', 'images_generated'];
 
-    // Helper: extract URL from image data (handles both {id,url} objects and plain strings)
+    var lastLogCount = 0;
+
+    // Helper: extract URL from image data
     function imgUrl(item) { return typeof item === 'object' ? item.url : item; }
     function imgId(item) { return typeof item === 'object' ? item.id : null; }
 
@@ -30,18 +33,28 @@ $(document).ready(function() {
             $('#run-status-badge').attr('class', 'badge bg-' + cls).text(data.status.toUpperCase());
             if (data.status === 'completed') $('#btn-run-all').prop('disabled', true);
 
-            // Steps
             if (data.steps) {
+                var stepMap = {};
+                data.steps.forEach(function(s) { stepMap[s.step_name] = s; });
+
+                // Update visible step rows
                 var prevCompleted = true;
-                var stepIdx = 0;
+                var visIdx = 0;
                 data.steps.forEach(function(step) {
-                    stepIdx++;
+                    // Skip hidden steps in UI row rendering
+                    if (HIDDEN_STEPS.indexOf(step.step_name) >= 0) {
+                        prevCompleted = (step.status === 'completed');
+                        return;
+                    }
+
+                    visIdx++;
                     var $row = $('#step-row-' + step.step_name);
+                    if (!$row.length) return;
                     var $num = $row.find('.step-number[data-step="' + step.step_name + '"]');
 
                     // Update number/icon
                     $num.attr('class', 'step-number ' + (statusNumClass[step.status] || statusNumClass['pending']));
-                    $num.html(step.status === 'pending' ? stepIdx : (statusIcons[step.status] || stepIdx));
+                    $num.html(step.status === 'pending' ? visIdx : (statusIcons[step.status] || visIdx));
 
                     // Update result text & progress
                     $row.find('.step-result-text').remove();
@@ -66,13 +79,7 @@ $(document).ready(function() {
                         );
                     } else if (step.status === 'completed' && step.result_data) {
                         var txt = '';
-                        if (step.result_data.total_duration) {
-                            txt = step.result_data.paragraphs_processed + ' paragraphs · ' +
-                                  step.result_data.total_duration + 's · ' +
-                                  step.result_data.total_characters + ' chars';
-                        } else if (step.result_data.scenes_processed !== undefined) {
-                            txt = step.result_data.scenes_processed + ' scenes processed';
-                        } else if (step.result_data.word_count) {
+                        if (step.result_data.word_count) {
                             txt = step.result_data.word_count + ' chars · ' + step.result_data.paragraphs + ' paragraphs';
                         } else if (step.result_data.message) {
                             txt = step.result_data.message;
@@ -85,12 +92,11 @@ $(document).ready(function() {
                     }
 
                     // Update action buttons
-                    var $actions = $row.find('.d-flex.align-items-center.gap-2').last();
+                    var $actions = $row.find('.step-actions');
                     $actions.find('.btn-execute-step, .bi-check-lg, .btn-toggle-result').remove();
 
                     if (step.status === 'completed') {
-                        // Show view button for steps with results
-                        var viewSteps = ['script_generated', 'script_translated', 'tts_completed', 'images_generated', 'uploaded'];
+                        var viewSteps = ['script_generated', 'script_translated', 'uploaded'];
                         if (viewSteps.indexOf(step.step_name) >= 0) {
                             $actions.prepend(
                                 '<button class="btn btn-sm btn-outline-secondary btn-toggle-result" data-step="' + step.step_name + '" title="View">' +
@@ -99,17 +105,9 @@ $(document).ready(function() {
                         }
                         $actions.append('<i class="bi bi-check-lg text-success"></i>');
 
-                        // Auto-load scripts/TTS when completed
+                        // Auto-load when completed
                         if (step.step_name === 'script_generated' && !koLoaded) loadKoScript();
                         if (step.step_name === 'script_translated' && !enLoaded) loadEnScript();
-                        if (step.step_name === 'tts_completed' && !ttsLoaded) loadTtsResults();
-                        if (step.step_name === 'images_generated' && !imagesLoaded) {
-                            loadImageResults();
-                            // Also refresh EN script panel to show new images inline
-                            enLoaded = false;
-                            enSceneImages = {};
-                            loadEnScript();
-                        }
                     } else if (step.status === 'pending' && prevCompleted) {
                         $actions.append(
                             '<button class="btn btn-sm btn-outline-primary btn-execute-step" data-run-id="' + RUN_ID + '" data-step="' + step.step_name + '">' +
@@ -124,6 +122,56 @@ $(document).ready(function() {
 
                     prevCompleted = (step.status === 'completed');
                 });
+
+                // Handle hidden steps (TTS/Images) — show inline progress & refresh
+                var ttsStep = stepMap['tts_completed'];
+                var imgStep = stepMap['images_generated'];
+
+                // TTS batch progress
+                if (ttsStep && ttsStep.status === 'running') {
+                    var ttsProg = (data.step_progress && data.step_progress['tts_completed']) || {};
+                    var ttsCur = parseInt(ttsProg.current) || 0;
+                    var ttsTotal = parseInt(ttsProg.total) || 1;
+                    var ttsPct = Math.round((ttsCur / ttsTotal) * 100);
+                    $('#batch-tts-progress').removeClass('d-none');
+                    $('#batch-tts-bar').css('width', ttsPct + '%');
+                    $('#batch-tts-label').text(ttsCur + '/' + ttsTotal + ' ' + (ttsProg.current_label || ''));
+                    $('#btn-batch-tts').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> Generating...');
+                } else {
+                    $('#batch-tts-progress').addClass('d-none');
+                    $('#btn-batch-tts').prop('disabled', false).html('<i class="bi bi-mic me-1"></i>All TTS');
+                }
+
+                if (ttsStep && ttsStep.status === 'completed' && !ttsCompletedHandled) {
+                    ttsCompletedHandled = true;
+                    // Refresh EN script to show audio players
+                    enLoaded = false;
+                    enSceneImages = {};
+                    loadEnScript();
+                    _updateDownloadAllBtn();
+                }
+
+                // Images batch progress
+                if (imgStep && imgStep.status === 'running') {
+                    var imgProg = (data.step_progress && data.step_progress['images_generated']) || {};
+                    var imgCur = parseInt(imgProg.current) || 0;
+                    var imgTotal = parseInt(imgProg.total) || 1;
+                    var imgPct = Math.round((imgCur / imgTotal) * 100);
+                    $('#batch-images-progress').removeClass('d-none');
+                    $('#batch-images-bar').css('width', imgPct + '%');
+                    $('#batch-images-label').text(imgCur + '/' + imgTotal + ' ' + (imgProg.current_label || ''));
+                    $('#btn-batch-images').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> Generating...');
+                } else {
+                    $('#batch-images-progress').addClass('d-none');
+                    $('#btn-batch-images').prop('disabled', false).html('<i class="bi bi-image me-1"></i>All Images');
+                }
+
+                if (imgStep && imgStep.status === 'completed' && !imagesCompletedHandled) {
+                    imagesCompletedHandled = true;
+                    enLoaded = false;
+                    enSceneImages = {};
+                    loadEnScript();
+                }
             }
 
             // Logs
@@ -152,9 +200,8 @@ $(document).ready(function() {
 
     // ─── Toggle result panels ───
     var koLoaded = false, enLoaded = false;
-
-    var ttsLoaded = false;
-    var imagesLoaded = false;
+    var ttsCompletedHandled = false;
+    var imagesCompletedHandled = false;
 
     $(document).on('click', '.btn-toggle-result', function(e) {
         e.stopPropagation();
@@ -164,8 +211,6 @@ $(document).ready(function() {
 
         if (step === 'script_generated' && !koLoaded) loadKoScript();
         if (step === 'script_translated' && !enLoaded) loadEnScript();
-        if (step === 'tts_completed' && !ttsLoaded) loadTtsResults();
-        if (step === 'images_generated' && !imagesLoaded) loadImageResults();
     });
 
     // ─── KO Script (structured paragraphs) ───
@@ -254,10 +299,9 @@ $(document).ready(function() {
     });
 
     // ─── EN Script (structured paragraphs + per-paragraph TTS + Images) ───
-    var enSceneImages = {}; // scene_index -> scene image data
+    var enSceneImages = {};
 
     function loadEnScript() {
-        // Load scene images first, then render paragraphs
         $.getJSON('/pipeline/api/' + RUN_ID + '/images', function(imgData) {
             (imgData.images || []).forEach(function(img) {
                 enSceneImages[img.scene_index] = img;
@@ -272,6 +316,7 @@ $(document).ready(function() {
             enLoaded = true;
             var $container = $('#en-paragraphs-container').empty();
             var totalWords = 0;
+            var hasAudio = false;
             (data.paragraphs || []).forEach(function(p, i) {
                 var words = (p.text || '').split(/\s+/).filter(function(w) { return w; }).length;
                 totalWords += words;
@@ -280,6 +325,7 @@ $(document).ready(function() {
                 // Audio controls
                 var audioHtml = '';
                 if (p.audio_path) {
+                    hasAudio = true;
                     var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + p.paragraph_index + '.mp3';
                     audioHtml =
                         '<div class="en-para-audio d-flex align-items-center gap-2">' +
@@ -363,8 +409,16 @@ $(document).ready(function() {
             });
             $('#translated-word-count').text('· ' + totalWords + ' words · ~' + Math.round(totalWords / 2.5) + 's · ' + (data.paragraphs || []).length + ' paragraphs');
             $('#btn-save-translated').prop('disabled', false);
+            if (hasAudio) $('#btn-download-all-audio').show();
         }).fail(function() {
             $('#en-paragraphs-container').html('<p class="text-muted small text-center py-3">Not generated yet.</p>');
+        });
+    }
+
+    function _updateDownloadAllBtn() {
+        $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(data) {
+            var has = (data.paragraphs || []).some(function(p) { return !!p.audio_path; });
+            if (has) $('#btn-download-all-audio').show();
         });
     }
 
@@ -382,7 +436,6 @@ $(document).ready(function() {
             data: '{}',
             success: function(result) {
                 showToast('Images generated for P' + $card.data('para-index') + '!', 'success');
-                // Refresh scene images cache and re-render
                 enSceneImages[result.scene_index] = result;
                 enLoaded = false;
                 loadEnScript();
@@ -423,11 +476,12 @@ $(document).ready(function() {
                     '</div>'
                 );
                 showToast('TTS generated for P' + result.paragraph_index + ' (' + result.audio_duration + 's)', 'success');
+                $('#btn-download-all-audio').show();
             },
             error: function(xhr) {
                 var msg = xhr.responseJSON ? xhr.responseJSON.error : 'TTS generation failed.';
                 showToast(msg, 'danger');
-                $btn.prop('disabled', false).html('<i class="bi bi-mic me-1"></i>Generate TTS');
+                $btn.prop('disabled', false).html('<i class="bi bi-mic me-1"></i>TTS');
             }
         });
     });
@@ -464,93 +518,47 @@ $(document).ready(function() {
         });
     });
 
-    // ─── TTS results panel (audio players + download) ───
-    function loadTtsResults() {
-        $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(data) {
-            ttsLoaded = true;
-            var $list = $('#tts-player-list').empty();
-            var hasAudio = false;
-            (data.paragraphs || []).forEach(function(p) {
-                if (!p.audio_path) return;
-                hasAudio = true;
-                var audioUrl = '/pipeline/api/' + RUN_ID + '/audio/P' + p.paragraph_index + '.mp3';
-                $list.append(
-                    '<div class="d-flex align-items-center gap-2 mb-2">' +
-                    '  <span class="fw-semibold small text-muted" style="width:30px;">P' + p.paragraph_index + '</span>' +
-                    '  <audio controls preload="none" src="' + audioUrl + '" style="height:32px; flex-grow:1;"></audio>' +
-                    '  <span class="text-muted small" style="width:40px;">' + (p.audio_duration ? p.audio_duration.toFixed(1) + 's' : '') + '</span>' +
-                    '  <a href="' + audioUrl + '/download" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Download">' +
-                    '    <i class="bi bi-download"></i>' +
-                    '  </a>' +
-                    '</div>'
-                );
-            });
-            if (hasAudio) {
-                $('#btn-download-all-audio').show();
-            } else {
-                $list.html('<p class="text-muted small">No audio files generated yet.</p>');
+    // ─── Batch TTS generation (calls backend step execute) ───
+    $('#btn-batch-tts').on('click', function() {
+        var $btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> Starting...');
+        ttsCompletedHandled = false;
+        $.ajax({
+            url: '/pipeline/' + RUN_ID + '/step/tts_completed/execute',
+            method: 'POST',
+            data: '{}',
+            success: function() {
+                showToast('TTS generation started.', 'info');
+                // pollStatus will handle progress display
+                if (!pollActive) { pollActive = true; pollStatus(); }
+            },
+            error: function(xhr) {
+                showToast(xhr.responseJSON ? xhr.responseJSON.error : 'Failed to start TTS.', 'danger');
+                $btn.prop('disabled', false).html('<i class="bi bi-mic me-1"></i>All TTS');
             }
         });
-    }
+    });
 
-    // ─── Image results panel ───
-    function loadImageResults() {
-        $.getJSON('/pipeline/api/' + RUN_ID + '/images', function(data) {
-            imagesLoaded = true;
-            var $container = $('#image-scenes-container').empty();
-            var images = data.images || [];
-
-            if (!images.length) {
-                $container.html('<p class="text-muted small">No images generated yet.</p>');
-                return;
+    // ─── Batch Images generation (calls backend step execute) ───
+    $('#btn-batch-images').on('click', function() {
+        var $btn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> Starting...');
+        imagesCompletedHandled = false;
+        $.ajax({
+            url: '/pipeline/' + RUN_ID + '/step/images_generated/execute',
+            method: 'POST',
+            data: '{}',
+            success: function() {
+                showToast('Image generation started.', 'info');
+                if (!pollActive) { pollActive = true; pollStatus(); }
+            },
+            error: function(xhr) {
+                showToast(xhr.responseJSON ? xhr.responseJSON.error : 'Failed to start image generation.', 'danger');
+                $btn.prop('disabled', false).html('<i class="bi bi-image me-1"></i>All Images');
             }
-
-            // Also load EN script to show scene direction context
-            $.getJSON('/pipeline/api/' + RUN_ID + '/script/en', function(scriptData) {
-                var paraMap = {};
-                (scriptData.paragraphs || []).forEach(function(p) {
-                    paraMap[p.paragraph_index] = p;
-                });
-
-                images.forEach(function(img) {
-                    var para = paraMap[img.scene_index] || {};
-                    var sceneText = para.scene_direction || '';
-                    var selectedUrl = img.selected_url || '';
-
-                    var imagesHtml = '';
-                    (img.image_urls || []).forEach(function(item) {
-                        var url = imgUrl(item);
-                        var isSelected = (url === selectedUrl);
-                        imagesHtml +=
-                            '<div class="col-6 col-md-3">' +
-                            '  <div class="position-relative img-thumb-click' + (isSelected ? ' selected' : '') + '"' +
-                            '       data-scene-id="' + img.id + '" data-url="' + url + '"' +
-                            '       style="cursor:pointer; border: 2px solid ' + (isSelected ? '#198754' : 'transparent') + '; border-radius: 6px; overflow:hidden;">' +
-                            '    <img src="' + url + '" class="img-fluid rounded" style="aspect-ratio:9/16; object-fit:cover; width:100%;">' +
-                            (isSelected ? '<span class="badge bg-success position-absolute top-0 end-0 m-1"><i class="bi bi-check-lg"></i></span>' : '') +
-                            '  </div>' +
-                            '</div>';
-                    });
-
-                    $container.append(
-                        '<div class="card mb-3 scene-image-card" data-scene-id="' + img.id + '">' +
-                        '  <div class="card-body p-2">' +
-                        '    <div class="d-flex justify-content-between align-items-center mb-2">' +
-                        '      <span class="fw-semibold small text-muted">P' + img.scene_index + '</span>' +
-                        '      <button class="btn btn-sm btn-outline-warning btn-regen-scene py-0 px-2" ' +
-                        '              data-para-id="' + (para.id || '') + '" title="Regenerate">' +
-                        '        <i class="bi bi-arrow-clockwise me-1"></i>Regenerate' +
-                        '      </button>' +
-                        '    </div>' +
-                        '    <div class="text-muted small mb-2" style="font-size:0.78rem;">' + (sceneText || img.prompt || '') + '</div>' +
-                        '    <div class="row g-2">' + imagesHtml + '</div>' +
-                        '  </div>' +
-                        '</div>'
-                    );
-                });
-            });
         });
-    }
+    });
+
+    // Track if polling is active (restart after completed/failed)
+    var pollActive = true;
 
     // ─── Image Lightbox (click to enlarge) ───
     var lightboxSceneId = null;
@@ -560,7 +568,7 @@ $(document).ready(function() {
         e.stopPropagation();
         lightboxSceneId = $(this).data('scene-id');
         lightboxUrl = $(this).data('url');
-        var sceneIndex = $(this).closest('[data-scene-id]').closest('.scene-image-card,.en-para-card').find('.text-muted.fw-semibold,.fw-semibold.small').first().text();
+        var sceneIndex = $(this).closest('.en-para-card').find('.fw-semibold.small').first().text();
         $('#lightbox-title').text(sceneIndex || 'Image');
         $('#lightbox-img').attr('src', lightboxUrl);
         var modal = new bootstrap.Modal(document.getElementById('imageLightbox'));
@@ -578,8 +586,6 @@ $(document).ready(function() {
             success: function() {
                 showToast('Image selected!', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('imageLightbox')).hide();
-                // Refresh both panels
-                imagesLoaded = false; loadImageResults();
                 enLoaded = false; enSceneImages = {}; loadEnScript();
             },
             error: function(xhr) {
@@ -589,7 +595,7 @@ $(document).ready(function() {
         });
     });
 
-    // Variation from lightbox (Subtle / Strong)
+    // Variation from lightbox
     function doVariation(strength) {
         if (!lightboxSceneId || !lightboxUrl) return;
         var $modal = $('#imageLightbox .modal-footer');
@@ -602,15 +608,13 @@ $(document).ready(function() {
             url: '/pipeline/api/' + RUN_ID + '/images/vary',
             method: 'POST',
             data: JSON.stringify({ scene_image_id: lightboxSceneId, source_url: lightboxUrl, strength: strength }),
-            success: function(result) {
+            success: function() {
                 showToast('Variation generated! (' + strength + ')', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('imageLightbox')).hide();
-                imagesLoaded = false; loadImageResults();
                 enLoaded = false; enSceneImages = {}; loadEnScript();
             },
             error: function(xhr) {
-                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Variation failed.';
-                showToast(msg, 'danger');
+                showToast(xhr.responseJSON ? xhr.responseJSON.error : 'Variation failed.', 'danger');
             },
             complete: function() {
                 $modal.find('.btn').prop('disabled', false);
@@ -622,35 +626,9 @@ $(document).ready(function() {
     $('#lightbox-vary-subtle').on('click', function() { doVariation('subtle'); });
     $('#lightbox-vary-strong').on('click', function() { doVariation('strong'); });
 
-    // Regenerate single scene
-    $(document).on('click', '.btn-regen-scene', function(e) {
-        e.stopPropagation();
-        var $btn = $(this);
-        var paraId = $btn.data('para-id');
-        if (!paraId) return;
-
-        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span> Generating...');
-
-        $.ajax({
-            url: '/pipeline/api/' + RUN_ID + '/images/paragraph/' + paraId,
-            method: 'POST',
-            data: '{}',
-            success: function() {
-                showToast('Images regenerated!', 'success');
-                imagesLoaded = false;
-                loadImageResults();
-            },
-            error: function(xhr) {
-                var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Image generation failed.';
-                showToast(msg, 'danger');
-                $btn.prop('disabled', false).html('<i class="bi bi-arrow-clockwise me-1"></i>Regenerate');
-            }
-        });
-    });
-
-    // Download all audio files one by one
+    // Download all audio files
     $('#btn-download-all-audio').on('click', function() {
-        $('#tts-player-list a[href$="/download"]').each(function(i) {
+        $('.en-para-audio a[href$="/download"]').each(function(i) {
             var $link = $(this);
             setTimeout(function() {
                 var a = document.createElement('a');
@@ -672,7 +650,10 @@ $(document).ready(function() {
             url: '/pipeline/' + runId + '/step/' + step + '/execute',
             method: 'POST',
             data: '{}',
-            success: function() { showToast('Step started.', 'info'); },
+            success: function() {
+                showToast('Step started.', 'info');
+                if (!pollActive) { pollActive = true; pollStatus(); }
+            },
             error: function(xhr) {
                 showToast(xhr.responseJSON ? xhr.responseJSON.error : 'Failed.', 'danger');
             }
@@ -686,7 +667,10 @@ $(document).ready(function() {
             url: '/pipeline/' + RUN_ID + '/run-all',
             method: 'POST',
             data: '{}',
-            success: function() { showToast('Production started!', 'success'); },
+            success: function() {
+                showToast('Production started!', 'success');
+                if (!pollActive) { pollActive = true; pollStatus(); }
+            },
             error: function() {
                 showToast('Failed to start.', 'danger');
                 $('#btn-run-all').prop('disabled', false).html('<i class="bi bi-play-fill me-1"></i>Run All');

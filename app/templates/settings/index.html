@@ -295,7 +295,7 @@
                                     <i class="bi bi-cloud-upload me-1"></i>Upload
                                 </button>
                             </div>
-                            <div class="form-text">미드저니의 이미지 참조(--iw)와 동일한 역할. URL에서 이미지를 다운로드하여 Leonardo에 업로드합니다.</div>
+                            <div class="form-text">참조 이미지의 화풍/스타일만 적용합니다 (구도/내용은 프롬프트를 따름). URL에서 이미지를 다운로드하여 Leonardo에 업로드합니다.</div>
                         </div>
                         <div class="col-12" id="style-ref-preview" style="display:none;">
                             <div class="d-flex align-items-center gap-3 p-2 bg-light rounded">
@@ -310,10 +310,15 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Style Reference Strength <span class="text-muted fw-normal" id="style-ref-strength-val">0.5</span></label>
-                            <input type="range" class="form-range settings-input" data-section="leonardo" data-key="style_ref_strength"
-                                   min="0.1" max="0.9" step="0.1" value="0.5">
-                            <div class="form-text">낮을수록 참조 이미지에 가까움 (0.1), 높을수록 프롬프트에 충실 (0.9)</div>
+                            <label class="form-label fw-bold">Style Reference Strength</label>
+                            <select class="form-select settings-input" data-section="leonardo" data-key="style_ref_strength_type">
+                                <option value="Low">Low — 약한 스타일 적용</option>
+                                <option value="Mid" selected>Mid — 보통</option>
+                                <option value="High">High — 강한 스타일 적용</option>
+                                <option value="Ultra">Ultra — 매우 강함</option>
+                                <option value="Max">Max — 최대 스타일 적용</option>
+                            </select>
+                            <div class="form-text">스타일 참조 강도. 높을수록 참조 이미지의 화풍을 강하게 반영합니다.</div>
                         </div>
                     </div>
 
@@ -321,10 +326,27 @@
                     <h6 class="fw-bold mb-3"><i class="bi bi-gear me-1"></i>Generation Settings</h6>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Model ID</label>
-                            <input type="text" class="form-control settings-input" data-section="leonardo" data-key="model_id"
-                                   placeholder="Leave empty for default model">
-                            <div class="form-text">Leonardo model UUID (빈칸이면 기본 모델)</div>
+                            <label class="form-label fw-bold">Model</label>
+                            <select class="form-select settings-input" data-section="leonardo" data-key="model_id">
+                                <optgroup label="1세대 주력">
+                                    <option value="de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3">Phoenix 1.0 (프롬프트 준수 최고)</option>
+                                    <option value="6b645e3a-d64f-4341-a6d8-7a3690fbf042">Phoenix 0.9</option>
+                                    <option value="7b592283-e8a7-4c5a-9ba6-d18c31f258b9">Lucid Origin (HD, 텍스트 렌더링)</option>
+                                    <option value="05ce0082-2d80-4a2d-8653-4d1c85e2418e">Lucid Realism (고속)</option>
+                                </optgroup>
+                                <optgroup label="FLUX 계열">
+                                    <option value="b2614463-296c-462a-9586-aafdb8f00e36">Flux Dev (빠른 반복)</option>
+                                    <option value="1dd50843-d653-4516-a8e3-f0238ee453ff">Flux Schnell (초고속)</option>
+                                </optgroup>
+                                <optgroup label="XL 계열">
+                                    <option value="aa77f04e-3eec-4034-9c07-d0f619684628">Kino XL (시네마틱)</option>
+                                    <option value="b24e16ff-06e3-43eb-8d33-4416c2d75876">Lightning XL (고속 범용)</option>
+                                    <option value="e71a1c2f-4f80-4800-934f-2c68979d8cc8">Anime XL (애니메/일러스트)</option>
+                                    <option value="5c232a9e-9061-4777-980a-ddc8e65647c6">Vision XL (리얼리즘)</option>
+                                    <option value="1e60896f-3c26-4296-8ecc-53e2afecc132">Diffusion XL (범용)</option>
+                                </optgroup>
+                            </select>
+                            <div class="form-text">Style Reference 사용 시 모델 선택 필수</div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Images per Scene</label>

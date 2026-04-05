@@ -26,27 +26,31 @@
     </div>
 </div>
 
-<!-- Steps -->
+<!-- Steps (Visual: 4 steps — backend steps 4&5 are merged into step 3 UI) -->
+{% set visual_steps = ['topic_confirmed', 'script_generated', 'script_translated', 'uploaded'] %}
+{% set hidden_steps = ['tts_completed', 'images_generated'] %}
 {% set step_icons = {
     'topic_confirmed': 'bi-check2-square',
     'script_generated': 'bi-file-earmark-text',
     'script_translated': 'bi-translate',
-    'tts_completed': 'bi-mic',
-    'images_generated': 'bi-image',
     'uploaded': 'bi-upload'
 } %}
 {% set step_labels = {
     'topic_confirmed': 'Confirm Topic',
     'script_generated': 'Generate Script (KO)',
-    'script_translated': 'Translate Script (EN)',
-    'tts_completed': 'Generate TTS',
-    'images_generated': 'Generate Images',
+    'script_translated': 'English Script & Media',
     'uploaded': 'Upload to YouTube'
 } %}
 
 <div class="card stat-card mb-3">
     <div class="card-body p-0" id="steps-container">
+        {% set ns = namespace(visual_idx=0, prev_completed=true) %}
         {% for step in run.steps %}
+        {% if step.step_name in hidden_steps %}
+            {% set ns.prev_completed = (step.status == 'completed') %}
+        {% endif %}
+        {% if step.step_name not in hidden_steps %}
+        {% set ns.visual_idx = ns.visual_idx + 1 %}
         <div class="step-row border-bottom" id="step-row-{{ step.step_name }}">
             <!-- Step main row -->
             <div class="d-flex align-items-center px-3 py-3">
@@ -60,7 +64,7 @@
                         {% if step.status == 'completed' %}<i class="bi bi-check"></i>
                         {% elif step.status == 'running' %}<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;"></span>
                         {% elif step.status == 'failed' %}<i class="bi bi-x"></i>
-                        {% else %}{{ loop.index }}{% endif %}
+                        {% else %}{{ ns.visual_idx }}{% endif %}
                     </span>
                 </div>
                 <div class="flex-grow-1">
@@ -81,14 +85,14 @@
                     <div class="text-danger small mt-1">{{ step.error_message }}</div>
                     {% endif %}
                 </div>
-                <div class="ms-2 d-flex align-items-center gap-2">
-                    {% if step.status == 'completed' and step.step_name in ['script_generated', 'script_translated', 'tts_completed', 'images_generated'] %}
+                <div class="ms-2 d-flex align-items-center gap-2 step-actions">
+                    {% if step.status == 'completed' and step.step_name in ['script_generated', 'script_translated', 'uploaded'] %}
                     <button class="btn btn-sm btn-outline-secondary btn-toggle-result"
                             data-step="{{ step.step_name }}" title="View result">
                         <i class="bi bi-eye"></i>
                     </button>
                     {% endif %}
-                    {% if step.status == 'pending' %}
+                    {% if step.status == 'pending' and ns.prev_completed %}
                     <button class="btn btn-sm btn-outline-primary btn-execute-step"
                             data-run-id="{{ run.id }}" data-step="{{ step.step_name }}">
                         <i class="bi bi-play-fill"></i><span class="d-none d-md-inline ms-1">Run</span>
@@ -104,7 +108,7 @@
                 </div>
             </div>
 
-            <!-- Expandable result panel -->
+            <!-- Result panels -->
             {% if step.step_name == 'script_generated' %}
             <div class="result-panel d-none border-top bg-light" id="result-script_generated">
                 <div class="p-3">
@@ -124,43 +128,48 @@
             {% if step.step_name == 'script_translated' %}
             <div class="result-panel d-none border-top bg-light" id="result-script_translated">
                 <div class="p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <!-- Header with batch actions -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                         <span class="fw-semibold small">English Script <span class="text-muted" id="translated-word-count"></span></span>
-                        <button class="btn btn-sm btn-primary" id="btn-save-translated" disabled>
-                            <i class="bi bi-check-lg me-1"></i>Save
-                        </button>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-sm btn-outline-primary" id="btn-batch-tts" title="Generate TTS for all paragraphs">
+                                <i class="bi bi-mic me-1"></i>All TTS
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" id="btn-batch-images" title="Generate images for all paragraphs">
+                                <i class="bi bi-image me-1"></i>All Images
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="btn-download-all-audio" style="display:none;" title="Download all audio files">
+                                <i class="bi bi-download me-1"></i>Audio
+                            </button>
+                            <button class="btn btn-sm btn-primary" id="btn-save-translated" disabled>
+                                <i class="bi bi-check-lg me-1"></i>Save
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- Batch progress indicators -->
+                    <div id="batch-tts-progress" class="d-none mb-3">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span><i class="bi bi-mic me-1"></i>Generating TTS...</span>
+                            <span id="batch-tts-label"></span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" id="batch-tts-bar" style="width:0%;"></div>
+                        </div>
+                    </div>
+                    <div id="batch-images-progress" class="d-none mb-3">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span><i class="bi bi-image me-1"></i>Generating Images...</span>
+                            <span id="batch-images-label"></span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="batch-images-bar" style="width:0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Paragraphs -->
                     <div id="en-paragraphs-container">
                         <p class="text-muted small py-3 text-center">Loading...</p>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if step.step_name == 'tts_completed' %}
-            <div class="result-panel d-none border-top bg-light" id="result-tts_completed">
-                <div class="p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-semibold small">Audio Files</span>
-                        <button class="btn btn-sm btn-outline-primary" id="btn-download-all-audio" style="display:none;">
-                            <i class="bi bi-download me-1"></i>Download All
-                        </button>
-                    </div>
-                    <div id="tts-player-list">
-                        <p class="text-muted small">No audio files generated yet.</p>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if step.step_name == 'images_generated' %}
-            <div class="result-panel d-none border-top bg-light" id="result-images_generated">
-                <div class="p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-semibold small">Generated Images</span>
-                    </div>
-                    <div id="image-scenes-container">
-                        <p class="text-muted small">No images generated yet.</p>
                     </div>
                 </div>
             </div>
@@ -182,6 +191,8 @@
             </div>
             {% endif %}
         </div>
+        {% set ns.prev_completed = (step.status == 'completed') %}
+        {% endif %}
         {% endfor %}
     </div>
 </div>

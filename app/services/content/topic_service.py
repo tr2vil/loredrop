@@ -1,5 +1,8 @@
 import json
+import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
+from flask import current_app
 from ...extensions import db, redis_client
 from ...models.topic import RecommendedTopic, SelectedTopic
 from ..ai.claude_client import generate
@@ -22,8 +25,12 @@ def get_existing_topics_text():
     return '\n'.join(lines)
 
 
-def generate_topics(count=None):
+def generate_topics(count=None, video_type='short'):
     """Generate topic recommendations via Claude API.
+
+    Args:
+        count: Number of topics to generate.
+        video_type: 'short' or 'long' — adjusts topic style guidance.
 
     Returns list of RecommendedTopic objects saved to DB.
     """
@@ -38,10 +45,32 @@ def generate_topics(count=None):
     user_prompt = user_prompt.replace('{count}', str(count))
     user_prompt = user_prompt.replace('{existing_topics}', existing_topics)
 
+    # Add video type context to guide topic recommendations
+    if video_type == 'long':
+        video_context = (
+            '\n\n영상 형식: Long-form (5-7분)\n'
+            '- 깊이 있는 스토리텔링이 가능한 주제를 추천할 것\n'
+            '- 여러 에피소드, 인물, 전환점이 있는 복잡한 이야기 선호\n'
+            '- 단순한 "한 가지 사실" 주제보다는 서사가 풍부한 주제 추천'
+        )
+    else:
+        video_context = (
+            '\n\n영상 형식: Short-form (~1분)\n'
+            '- 짧고 임팩트 있는 한 가지 핵심 사실/사건 중심 주제\n'
+            '- "한 줄로 설명 가능하지만 충격적인" 주제 선호'
+        )
+    user_prompt += video_context
+
     response_text = generate(system_prompt, user_prompt)
 
     # Parse JSON response
     topics_data = _parse_topics_json(response_text)
+
+    # Sub-agent validation
+    topics_data = validate_topics(topics_data)
+
+    # Sort by total score (highest first)
+    topics_data.sort(key=lambda t: t.get('score_total') or 0, reverse=True)
 
     # Save to DB
     today = date.today()
@@ -53,6 +82,13 @@ def generate_topics(count=None):
             category=_detect_category(t),
             source='claude',
             batch_date=today,
+            score_history=t.get('score_history'),
+            score_channel_fit=t.get('score_channel_fit'),
+            score_audience=t.get('score_audience'),
+            score_total=t.get('score_total'),
+            validation_details=json.dumps(
+                t.get('validation_details', {}), ensure_ascii=False
+            ) if t.get('validation_details') else None,
         )
         db.session.add(topic)
         saved.append(topic)
@@ -111,6 +147,125 @@ def _detect_category(t):
     if any(w in keywords for w in ['k-pop', 'k-drama', 'culture', 'food', 'gaming']):
         return 'culture'
     return 'history'
+
+
+# ---------------------------------------------------------------------------
+# Sub-agent validation
+# ---------------------------------------------------------------------------
+
+_AGENT_CONFIGS = [
+    ('history_verification', 'agent_history_verification', 'score_history'),
+    ('channel_fit', 'agent_channel_fit', 'score_channel_fit'),
+    ('audience_appeal', 'agent_audience_appeal', 'score_audience'),
+]
+
+_WEIGHTS = {'score_history': 0.4, 'score_channel_fit': 0.3, 'score_audience': 0.3}
+
+
+def validate_topics(topics_data):
+    """Run 3 sub-agents in parallel to evaluate topics. Returns topics_data with scores."""
+    topics_json = json.dumps(topics_data, ensure_ascii=False, indent=2)
+    app = current_app._get_current_object()
+
+    def _run_agent(agent_name, prompt_name):
+        with app.app_context():
+            system_prompt, user_prompt = get_prompt(prompt_name)
+            if not system_prompt:
+                return agent_name, None
+            user_prompt = user_prompt.replace('{topics_json}', topics_json)
+            try:
+                response = generate(system_prompt, user_prompt)
+                return agent_name, _parse_agent_response(response)
+            except Exception as e:
+                print(f'[Agent:{agent_name}] Error: {e}')
+                return agent_name, None
+
+    # Parallel execution
+    agent_results = {}
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(_run_agent, name, prompt_name): score_key
+            for name, prompt_name, score_key in _AGENT_CONFIGS
+        }
+        for future in as_completed(futures):
+            name, result = future.result()
+            agent_results[name] = result
+
+    # Merge scores into topics_data
+    return _aggregate_scores(topics_data, agent_results)
+
+
+def _parse_agent_response(text):
+    """Parse a sub-agent's JSON evaluation response."""
+    text = text.strip()
+    text = re.sub(r'^```(?:json)?\s*', '', text)
+    text = re.sub(r'\s*```$', '', text)
+    text = text.strip()
+
+    match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', text)
+    if match:
+        text = match.group(1)
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+    if isinstance(data, dict) and 'evaluations' in data:
+        return data['evaluations']
+    if isinstance(data, list):
+        return data
+    return None
+
+
+def _aggregate_scores(topics_data, agent_results):
+    """Merge agent evaluation scores into topics_data."""
+    # Build lookup: topic number -> evaluations per agent
+    for topic in topics_data:
+        num = topic.get('number', 0)
+        details = {}
+
+        for agent_name, prompt_name, score_key in _AGENT_CONFIGS:
+            evals = agent_results.get(agent_name)
+            if not evals:
+                continue
+            # Find matching evaluation by number
+            ev = next((e for e in evals if e.get('number') == num), None)
+            if not ev:
+                # Fallback: match by index
+                idx = topics_data.index(topic)
+                ev = evals[idx] if idx < len(evals) else None
+            if ev:
+                score = ev.get('score', 0)
+                try:
+                    score = float(score)
+                except (TypeError, ValueError):
+                    score = 0
+                score = max(0, min(10, score))
+                topic[score_key] = score
+                details[agent_name] = {
+                    'score': score,
+                    'reasoning': ev.get('reasoning', ''),
+                    'issues': ev.get('issues', []),
+                    'strengths': ev.get('strengths', []),
+                }
+
+        topic['validation_details'] = details
+
+        # Calculate weighted total
+        available = []
+        for score_key, weight in _WEIGHTS.items():
+            val = topic.get(score_key)
+            if val is not None:
+                available.append((val, weight))
+
+        if available:
+            total_weight = sum(w for _, w in available)
+            topic['score_total'] = round(
+                sum(v * w for v, w in available) / total_weight, 1
+            )
+
+    return topics_data
 
 
 def select_topic(topic_id, video_type='short'):

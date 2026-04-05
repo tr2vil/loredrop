@@ -44,11 +44,13 @@ def _handle_callback_query(callback_query):
     # Select topic
     if action in ('sel', 'select_topic'):
         topic_id = data.get('id') or data.get('topic_id')
+        video_type = data.get('vt', 'short')
         try:
-            selected = select_topic(topic_id, video_type='short')
-            answer_callback(callback_id, f'Selected!')
+            selected = select_topic(topic_id, video_type=video_type)
+            type_label = 'Long-form' if video_type == 'long' else 'Short-form'
+            answer_callback(callback_id, f'Selected! ({type_label})')
             send_message(
-                f'✅ <b>주제 선택 완료</b>\n\n'
+                f'✅ <b>주제 선택 완료</b> ({type_label})\n\n'
                 f'<b>{selected.title}</b>\n\n'
                 f'웹 UI에서 Pipeline을 시작하세요:\n'
                 f'http://localhost:8000/topics/',
@@ -59,20 +61,23 @@ def _handle_callback_query(callback_query):
 
     # Regenerate topics
     elif action == 'regen':
+        video_type = data.get('vt', 'short')
         answer_callback(callback_id, 'Regenerating...')
         send_message('🔄 <b>주제를 다시 생성하고 있습니다...</b>', chat_id=chat_id)
         try:
-            topics = generate_topics()
+            topics = generate_topics(video_type=video_type)
             if topics:
-                send_topic_choices(topics)
+                send_topic_choices(topics, video_type=video_type)
         except Exception as e:
             send_message(f'❌ 주제 생성 실패: {e}', chat_id=chat_id)
 
     # Custom topic input mode
     elif action == 'custom':
+        video_type = data.get('vt', 'short')
         try:
             answer_callback(callback_id, 'Enter your topic')
-            redis_client.set(CUSTOM_TOPIC_STATE_KEY.format(chat_id=chat_id), '1', ex=300)  # 5min timeout
+            # Store video_type along with waiting state
+            redis_client.set(CUSTOM_TOPIC_STATE_KEY.format(chat_id=chat_id), video_type, ex=300)  # 5min timeout
             send_message(
                 '✏️ <b>직접 주제를 입력해주세요.</b>\n\n'
                 '이 메시지에 <b>답장</b>으로 주제를 입력해주세요.\n'
@@ -117,7 +122,9 @@ def _handle_text_message(message):
 
     # Check if we're waiting for custom topic input
     state_key = CUSTOM_TOPIC_STATE_KEY.format(chat_id=chat_id)
-    if redis_client.get(state_key):
+    stored_video_type = redis_client.get(state_key)
+    if stored_video_type:
+        video_type = stored_video_type if stored_video_type in ('short', 'long') else 'short'
         redis_client.delete(state_key)
 
         # Parse: first line as title, rest as description
@@ -146,7 +153,7 @@ def _handle_text_message(message):
         selected = SelectedTopic(
             recommended_topic_id=topic.id,
             title=title,
-            video_type='short',
+            video_type=video_type,
         )
         db.session.add(selected)
         db.session.commit()

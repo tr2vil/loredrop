@@ -14,6 +14,13 @@ class RecommendedTopic(db.Model):
     is_selected = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Sub-agent validation scores (0-10)
+    score_history = db.Column(db.Float, nullable=True)
+    score_channel_fit = db.Column(db.Float, nullable=True)
+    score_audience = db.Column(db.Float, nullable=True)
+    score_total = db.Column(db.Float, nullable=True)
+    validation_details = db.Column(db.Text, nullable=True)  # JSON string
+
     selected_topic = db.relationship('SelectedTopic', backref='recommended_topic', uselist=False)
 
     def to_dict(self):
@@ -26,10 +33,16 @@ class RecommendedTopic(db.Model):
             'batch_date': self.batch_date.isoformat() if self.batch_date else None,
             'is_selected': self.is_selected,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'score_history': self.score_history,
+            'score_channel_fit': self.score_channel_fit,
+            'score_audience': self.score_audience,
+            'score_total': self.score_total,
+            'validation_details': self.validation_details,
         }
         if self.selected_topic:
             d['video_type'] = self.selected_topic.video_type
             d['selected_topic_id'] = self.selected_topic.id
+            d['has_pipeline_run'] = self.selected_topic.pipeline_runs.count() > 0
         return d
 
 

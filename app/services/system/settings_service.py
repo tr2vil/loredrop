@@ -29,7 +29,7 @@ DEFAULTS = {
         'character_refs': '',
     },
     'leonardo': {
-        'model_id': '',
+        'model_id': 'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3',
         'num_images': '4',
         'width': '576',
         'height': '1024',
@@ -38,10 +38,10 @@ DEFAULTS = {
         'color_palette': 'soft teal and warm beige tones',
         'rendering_style': 'delicate ink linework, dreamy storybook aesthetic, textured paper background',
         'consistent_elements': 'magical sparkles and light rays, cozy enchanting atmosphere',
-        'negative_prompt': 'blurry, low quality, text, watermark, ugly, deformed',
+        'negative_prompt': 'blurry, low quality, text, watermark, ugly, deformed, extra limbs, extra fingers, mutated hands, bad anatomy, bad proportions, duplicate, cropped, out of frame, disfigured, poorly drawn face, poorly drawn hands',
         'style_ref_image_id': '',
         'style_ref_image_url': '',
-        'style_ref_strength': '0.5',
+        'style_ref_strength_type': 'Mid',
     },
     'general': {
         'default_language': 'ko',

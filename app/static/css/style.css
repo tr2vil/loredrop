@@ -5,6 +5,22 @@
     --color-card: #ffffff;
     --radius: 10px;
     --shadow: 0 1px 4px rgba(0,0,0,0.06);
+    --color-purple: #7c3aed;
+}
+
+/* ─── Purple variant (Bootstrap extension) ─── */
+.text-purple { color: var(--color-purple) !important; }
+.bg-purple { background-color: var(--color-purple) !important; }
+.bg-purple.bg-opacity-10 { background-color: rgba(124, 58, 237, 0.1) !important; }
+.btn-outline-purple {
+    color: var(--color-purple);
+    border-color: var(--color-purple);
+}
+.btn-outline-purple:hover,
+.btn-check:checked + .btn-outline-purple {
+    color: #fff;
+    background-color: var(--color-purple);
+    border-color: var(--color-purple);
 }
 
 body {

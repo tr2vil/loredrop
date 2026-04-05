@@ -15,6 +15,7 @@ services:
       - ./app:/app/app
       - ./migrations:/app/migrations
       - ./output:/app/output
+      - ./tests:/app/tests
     depends_on:
       postgres:
         condition: service_healthy
