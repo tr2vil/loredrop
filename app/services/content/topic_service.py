@@ -25,8 +25,12 @@ def get_existing_topics_text():
     return '\n'.join(lines)
 
 
-def generate_topics(count=None):
+def generate_topics(count=None, video_type='short'):
     """Generate topic recommendations via Claude API.
+
+    Args:
+        count: Number of topics to generate.
+        video_type: 'short' or 'long' — adjusts topic style guidance.
 
     Returns list of RecommendedTopic objects saved to DB.
     """
@@ -40,6 +44,22 @@ def generate_topics(count=None):
     existing_topics = get_existing_topics_text()
     user_prompt = user_prompt.replace('{count}', str(count))
     user_prompt = user_prompt.replace('{existing_topics}', existing_topics)
+
+    # Add video type context to guide topic recommendations
+    if video_type == 'long':
+        video_context = (
+            '\n\n영상 형식: Long-form (5-7분)\n'
+            '- 깊이 있는 스토리텔링이 가능한 주제를 추천할 것\n'
+            '- 여러 에피소드, 인물, 전환점이 있는 복잡한 이야기 선호\n'
+            '- 단순한 "한 가지 사실" 주제보다는 서사가 풍부한 주제 추천'
+        )
+    else:
+        video_context = (
+            '\n\n영상 형식: Short-form (~1분)\n'
+            '- 짧고 임팩트 있는 한 가지 핵심 사실/사건 중심 주제\n'
+            '- "한 줄로 설명 가능하지만 충격적인" 주제 선호'
+        )
+    user_prompt += video_context
 
     response_text = generate(system_prompt, user_prompt)
 

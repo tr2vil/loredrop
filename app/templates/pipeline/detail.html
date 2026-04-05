@@ -44,8 +44,11 @@
 
 <div class="card stat-card mb-3">
     <div class="card-body p-0" id="steps-container">
-        {% set ns = namespace(visual_idx=0) %}
+        {% set ns = namespace(visual_idx=0, prev_completed=true) %}
         {% for step in run.steps %}
+        {% if step.step_name in hidden_steps %}
+            {% set ns.prev_completed = (step.status == 'completed') %}
+        {% endif %}
         {% if step.step_name not in hidden_steps %}
         {% set ns.visual_idx = ns.visual_idx + 1 %}
         <div class="step-row border-bottom" id="step-row-{{ step.step_name }}">
@@ -82,14 +85,14 @@
                     <div class="text-danger small mt-1">{{ step.error_message }}</div>
                     {% endif %}
                 </div>
-                <div class="ms-2 d-flex align-items-center gap-2">
+                <div class="ms-2 d-flex align-items-center gap-2 step-actions">
                     {% if step.status == 'completed' and step.step_name in ['script_generated', 'script_translated', 'uploaded'] %}
                     <button class="btn btn-sm btn-outline-secondary btn-toggle-result"
                             data-step="{{ step.step_name }}" title="View result">
                         <i class="bi bi-eye"></i>
                     </button>
                     {% endif %}
-                    {% if step.status == 'pending' %}
+                    {% if step.status == 'pending' and ns.prev_completed %}
                     <button class="btn btn-sm btn-outline-primary btn-execute-step"
                             data-run-id="{{ run.id }}" data-step="{{ step.step_name }}">
                         <i class="bi bi-play-fill"></i><span class="d-none d-md-inline ms-1">Run</span>
@@ -188,6 +191,7 @@
             </div>
             {% endif %}
         </div>
+        {% set ns.prev_completed = (step.status == 'completed') %}
         {% endif %}
         {% endfor %}
     </div>

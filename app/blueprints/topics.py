@@ -35,14 +35,17 @@ def generate_topics():
     from ..services.distribution.telegram_service import send_topic_choices
     from ..extensions import redis_client
 
+    data = request.get_json(silent=True) or {}
+    video_type = data.get('video_type', 'short')
+
     try:
-        topics = gen_topics()
+        topics = gen_topics(video_type=video_type)
 
         # Send to Telegram if enabled
         telegram_enabled = redis_client.hget('settings:general', 'telegram_enabled')
         if telegram_enabled != 'false' and len(topics) > 0:
             try:
-                send_topic_choices(topics)
+                send_topic_choices(topics, video_type=video_type)
             except Exception as e:
                 # Don't fail the whole request if Telegram fails
                 print(f'Telegram send failed: {e}')
@@ -53,6 +56,33 @@ def generate_topics():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@topics_bp.route('/api/delete', methods=['POST'])
+def delete_selected_topics():
+    """Delete selected topics that have no pipeline runs."""
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids', [])
+    if not ids:
+        return jsonify({'error': 'No IDs provided'}), 400
+
+    deleted = 0
+    skipped = 0
+    for sid in ids:
+        st = SelectedTopic.query.get(sid)
+        if not st:
+            continue
+        if st.pipeline_runs.count() > 0:
+            skipped += 1
+            continue
+        # Also unmark the recommended topic
+        if st.recommended_topic:
+            st.recommended_topic.is_selected = False
+        db.session.delete(st)
+        deleted += 1
+
+    db.session.commit()
+    return jsonify({'ok': True, 'deleted': deleted, 'skipped': skipped})
 
 
 @topics_bp.route('/<int:topic_id>/select', methods=['POST'])

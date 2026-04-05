@@ -186,25 +186,39 @@ def register_commands(app):
             },
             'script_long': {
                 'step': 'script_generation',
-                'description': '8-10분 길이의 YouTube 본편 대본 생성',
+                'description': '5-7분 길이의 YouTube 본편 구조화된 한국어 대본 생성',
                 'system_prompt': (
                     'You are a scriptwriter for "LoreDrop", a faceless YouTube channel '
-                    'covering Korean history and culture for international audiences.\n'
-                    'Write documentary-style scripts for 8-10 minute narration.\n'
-                    'Style: informative, dramatic, with clear narrative arc.\n'
-                    'Language: Korean narration script.'
+                    'that tells fascinating Korean history and culture stories to international audiences.\n\n'
+                    'You write structured scripts in Korean. Each paragraph includes:\n'
+                    '- Narration text (Korean)\n'
+                    '- Visual scene description (Korean, will be translated to English later)\n'
+                    '- Mood/tone keyword (Korean, e.g. 긴장감, 신비로움, 승리감)\n\n'
+                    'Target: 5-7 minute narration (~1500-2100 Korean characters total).\n'
+                    'Style: documentary-style, informative, dramatic, with clear narrative arc.\n'
+                    'IMPORTANT: Write ALL fields (narration, scene, mood) in Korean only. Do NOT use English in any field.'
                 ),
                 'user_prompt': (
-                    '다음 주제에 대해 8-10분 분량의 영상 대본을 작성해줘:\n'
+                    '다음 주제에 대해 5-7분 분량의 긴 영상 대본을 작성해줘:\n'
                     '주제: {topic}\n\n'
                     '작성 규칙:\n'
-                    '- 도입부: 강력한 hook으로 시작 (시청자 이탈 방지)\n'
-                    '- 본문: 시간순 또는 논리적 흐름으로 전개\n'
-                    '- 결론: 여운 또는 교훈을 남기는 마무리\n'
-                    '- 총 15-20개 문단으로 구성\n'
-                    '- 나레이션 톤: 다큐멘터리 스타일\n'
-                    '- 전체 글자 수: 약 2,000-2,500자 (한국어 기준)\n\n'
-                    '각 문단을 빈 줄로 구분하여 작성해줘.'
+                    '- 20-25개 문단으로 구성\n'
+                    '- 도입부 (1-3문단): 강력한 hook으로 시작 (시청자 이탈 방지)\n'
+                    '- 본문 (4-20문단): 시간순 또는 논리적 흐름으로 전개, 구체적 에피소드와 디테일 포함\n'
+                    '- 결론 (21-25문단): 여운 또는 교훈을 남기는 마무리\n'
+                    '- 나레이션 톤: 다큐멘터리 스타일, 몰입감 있게\n'
+                    '- 구체적인 연도, 인물명, 수치, 일화 반드시 포함\n'
+                    '- 나레이션 총 글자 수: 약 1500-2100자 (한국어) — 반드시 1500자 이상 작성할 것\n\n'
+                    '반드시 아래 JSON 형식으로만 응답해. 코드블록 없이 순수 JSON만 출력:\n\n'
+                    '{\n'
+                    '  "paragraphs": [\n'
+                    '    {\n'
+                    '      "narration": "한국어 나레이션 텍스트",\n'
+                    '      "scene": "한국어 장면 묘사 (예: 어두운 회의실, 1980년대 한국, 극적인 조명)",\n'
+                    '      "mood": "분위기 키워드 (예: 긴장감, 신비로움, 승리감, 비장함, 극적, 경이로움, 충격, 희망적)"\n'
+                    '    }\n'
+                    '  ]\n'
+                    '}'
                 ),
             },
             'script_translate': {

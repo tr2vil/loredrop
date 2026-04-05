@@ -7,7 +7,13 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group" role="group" aria-label="Video type">
+            <input type="radio" class="btn-check" name="generateVideoType" id="genTypeShort" value="short" checked>
+            <label class="btn btn-outline-info btn-sm" for="genTypeShort">Short</label>
+            <input type="radio" class="btn-check" name="generateVideoType" id="genTypeLong" value="long">
+            <label class="btn btn-outline-purple btn-sm" for="genTypeLong">Long</label>
+        </div>
         <button class="btn btn-primary" id="btn-generate">
             <i class="bi bi-stars me-1"></i> Generate Topics
         </button>
@@ -23,12 +29,15 @@
         <i class="bi bi-check-circle-fill text-success"></i>
         <h6 class="mb-0">Selected Topics</h6>
         <span class="badge bg-success bg-opacity-10 text-success" id="selected-count">0</span>
+        <button class="btn btn-sm btn-outline-danger d-none ms-auto" id="btn-delete-selected">
+            <i class="bi bi-trash me-1"></i>Delete (<span class="del-count">0</span>)
+        </button>
     </div>
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
             <thead class="table-light">
                 <tr>
-                    <th style="width: 40px;">#</th>
+                    <th style="width: 40px;"></th>
                     <th>Title</th>
                     <th style="width: 100px;">Category</th>
                     <th style="width: 100px;">Type</th>
@@ -38,10 +47,14 @@
             </thead>
             <tbody id="selected-table-body">
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-3">No topics selected yet.</td>
+                    <td colspan="7" class="text-center text-muted py-3">No topics selected yet.</td>
                 </tr>
             </tbody>
         </table>
+        <div class="card-footer bg-white py-2 d-flex align-items-center justify-content-between">
+            <div id="selected-pp-select"></div>
+            <div id="selected-pager-nav"></div>
+        </div>
     </div>
 </div>
 
@@ -70,6 +83,10 @@
                 </tr>
             </tbody>
         </table>
+        <div class="card-footer bg-white py-2 d-flex align-items-center justify-content-between">
+            <div id="unselected-pp-select"></div>
+            <div id="unselected-pager-nav"></div>
+        </div>
     </div>
 </div>
 
@@ -92,7 +109,7 @@
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="videoType" id="typeLong" value="long">
-                            <label class="form-check-label" for="typeLong">Long (8-10 min)</label>
+                            <label class="form-check-label" for="typeLong">Long (5-7 min)</label>
                         </div>
                     </div>
                 </div>

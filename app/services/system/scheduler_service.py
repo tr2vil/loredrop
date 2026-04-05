@@ -20,6 +20,24 @@ def init_scheduler(app):
             except Exception as e:
                 print(f'[Scheduler] Topic generation failed: {e}')
 
+    def cleanup_old_topics():
+        """Delete unselected recommended topics older than 30 days."""
+        with app.app_context():
+            from datetime import date, timedelta
+            from ...extensions import db
+            from ...models.topic import RecommendedTopic
+            cutoff = date.today() - timedelta(days=30)
+            old_topics = RecommendedTopic.query.filter(
+                RecommendedTopic.is_selected == False,
+                RecommendedTopic.batch_date < cutoff,
+            ).all()
+            count = len(old_topics)
+            if count > 0:
+                for t in old_topics:
+                    db.session.delete(t)
+                db.session.commit()
+                print(f'[Scheduler] Cleaned up {count} old unselected topics (before {cutoff})')
+
     # Get schedule time from settings
     schedule_time = redis_client.hget('settings:general', 'schedule_time') or '09:00'
     hour, minute = schedule_time.split(':')
@@ -30,6 +48,16 @@ def init_scheduler(app):
         hour=int(hour),
         minute=int(minute),
         id='daily_topic_generation',
+        replace_existing=True,
+    )
+
+    # Cleanup old unselected topics daily at 03:00
+    scheduler.add_job(
+        cleanup_old_topics,
+        'cron',
+        hour=3,
+        minute=0,
+        id='cleanup_old_topics',
         replace_existing=True,
     )
 

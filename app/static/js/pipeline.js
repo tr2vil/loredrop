@@ -92,7 +92,7 @@ $(document).ready(function() {
                     }
 
                     // Update action buttons
-                    var $actions = $row.find('.d-flex.align-items-center.gap-2').last();
+                    var $actions = $row.find('.step-actions');
                     $actions.find('.btn-execute-step, .bi-check-lg, .btn-toggle-result').remove();
 
                     if (step.status === 'completed') {

@@ -25,13 +25,15 @@ def send_message(text, chat_id=None, parse_mode='HTML', reply_markup=None):
     return resp.json()
 
 
-def send_topic_choices(topics):
+def send_topic_choices(topics, video_type='short'):
     """Send recommended topics with detailed info and inline keyboard buttons.
 
     Args:
         topics: list of RecommendedTopic model instances
+        video_type: 'short' or 'long' — included in callback data for topic selection
     """
-    lines = ['📋 <b>오늘의 추천 주제</b>\n']
+    type_label = 'Long-form' if video_type == 'long' else 'Short-form'
+    lines = [f'📋 <b>오늘의 추천 주제</b> ({type_label})\n']
 
     for i, t in enumerate(topics, 1):
         lines.append(f'<b>{i}. {t.title}</b>')
@@ -63,18 +65,18 @@ def send_topic_choices(topics):
         btn_text = t.title if len(t.title) <= 40 else t.title[:37] + '...'
         buttons.append([{
             'text': f'✅ {btn_text}',
-            'callback_data': json.dumps({'a': 'sel', 'id': t.id})
+            'callback_data': json.dumps({'a': 'sel', 'id': t.id, 'vt': video_type})
         }])
 
     # Add regenerate and custom topic buttons
     buttons.append([
         {
             'text': '🔄 주제 재생성',
-            'callback_data': json.dumps({'a': 'regen'})
+            'callback_data': json.dumps({'a': 'regen', 'vt': video_type})
         },
         {
             'text': '✏️ 직접 입력',
-            'callback_data': json.dumps({'a': 'custom'})
+            'callback_data': json.dumps({'a': 'custom', 'vt': video_type})
         }
     ])
 

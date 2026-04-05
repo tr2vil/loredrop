@@ -115,9 +115,9 @@ Redis에 저장. 각 프롬프트는 `system_prompt` + `user_prompt` 쌍.
 
 | 이름 | 용도 | Pipeline Step |
 |------|------|---------------|
-| topic_generation | 주제 3개 추천 (JSON 응답) | topic_generation |
-| script_short | 쇼츠 한국어 대본 (JSON: narration/scene/mood) | script_generation |
-| script_long | 본편 한국어 대본 | script_generation |
+| topic_generation | 주제 3개 추천 (JSON 응답), video_type(short/long) 컨텍스트 포함 | topic_generation |
+| script_short | 쇼츠 한국어 대본 (JSON: narration/scene/mood, 600-700자, 6-8문단) | script_generation |
+| script_long | 본편 한국어 대본 (JSON: narration/scene/mood, 1500-2100자, 20-25문단) | script_generation |
 | script_translate | 한→영 번역 (JSON: narration/scene/mood) | script_generation |
 | scene_direction | 문단별 장면 묘사 | scene_direction |
 

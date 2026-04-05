@@ -42,6 +42,7 @@ class RecommendedTopic(db.Model):
         if self.selected_topic:
             d['video_type'] = self.selected_topic.video_type
             d['selected_topic_id'] = self.selected_topic.id
+            d['has_pipeline_run'] = self.selected_topic.pipeline_runs.count() > 0
         return d
 
 
