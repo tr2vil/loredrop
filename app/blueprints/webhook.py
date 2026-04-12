@@ -86,7 +86,10 @@ def _handle_callback_query(callback_query):
                 '<i>한국의 PC방 문화: 1997년 외환위기 이후 PC방이 급증한 배경과 '
                 '한국이 세계 최초 e스포츠 강국이 된 과정</i>',
                 chat_id=chat_id,
-                reply_markup={'force_reply': True, 'selective': True}
+                reply_markup={
+                    'force_reply': True,
+                    'input_field_placeholder': '주제: 설명 형식으로 입력하세요',
+                }
             )
         except Exception as e:
             print(f'[Webhook] Custom topic error: {e}', flush=True)
