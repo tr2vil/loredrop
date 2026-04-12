@@ -227,6 +227,70 @@ $(document).ready(function() {
         return 'secondary';
     }
 
+    function buildParaCard(p, i) {
+        var moodBadge = p.mood ? '<span class="badge bg-' + getMoodColor(p.mood) + ' bg-opacity-10 text-' + getMoodColor(p.mood) + '">' + p.mood + '</span>' : '';
+        return '<div class="card mb-2 para-card" data-id="' + (p.id || '') + '">' +
+            '  <div class="card-body p-2">' +
+            '    <div class="d-flex justify-content-between align-items-center mb-1">' +
+            '      <span class="fw-semibold small text-muted para-index">P' + (i + 1) + '</span>' +
+            '      <div class="d-flex align-items-center gap-1">' +
+            '        ' + moodBadge +
+            '        <button class="btn btn-outline-success btn-sm px-1 py-0 btn-para-add" title="Add paragraph below" style="font-size:0.75rem;line-height:1.2;">+</button>' +
+            '        <button class="btn btn-outline-danger btn-sm px-1 py-0 btn-para-remove" title="Remove paragraph" style="font-size:0.75rem;line-height:1.2;">&minus;</button>' +
+            '      </div>' +
+            '    </div>' +
+            '    <textarea class="form-control form-control-sm para-text mb-1" rows="3" ' +
+            '              style="font-size: 0.88rem; line-height: 1.6;">' + (p.text || '') + '</textarea>' +
+            '    <div class="d-flex gap-2">' +
+            '      <div class="flex-grow-1">' +
+            '        <input class="form-control form-control-sm para-scene" placeholder="Scene direction..." ' +
+            '               value="' + (p.scene_direction || '').replace(/"/g, '&quot;') + '" ' +
+            '               style="font-size: 0.8rem; color: #6c757d;">' +
+            '      </div>' +
+            '      <div style="width: 120px;">' +
+            '        <input class="form-control form-control-sm para-mood" placeholder="Mood..." ' +
+            '               value="' + (p.mood || '').replace(/"/g, '&quot;') + '" style="font-size: 0.8rem;">' +
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+    }
+
+    function reindexParaCards() {
+        var totalChars = 0;
+        $('#script-paragraphs-container .para-card').each(function(i) {
+            $(this).find('.para-index').text('P' + (i + 1));
+            totalChars += ($(this).find('.para-text').val() || '').length;
+        });
+        var count = $('#script-paragraphs-container .para-card').length;
+        $('#script-char-count').text('· ' + totalChars + ' chars · ' + count + ' paragraphs');
+    }
+
+    function markScriptDirty() {
+        $('#btn-save-script').removeClass('btn-primary').addClass('btn-warning').html('<i class="bi bi-save me-1"></i>Save *');
+    }
+
+    // Add paragraph below
+    $(document).on('click', '.btn-para-add', function() {
+        var $card = $(this).closest('.para-card');
+        var idx = $('#script-paragraphs-container .para-card').index($card);
+        var newCard = buildParaCard({ id: '', text: '', scene_direction: '', mood: '' }, idx + 1);
+        $card.after(newCard);
+        reindexParaCards();
+        markScriptDirty();
+    });
+
+    // Remove paragraph (min 1)
+    $(document).on('click', '.btn-para-remove', function() {
+        if ($('#script-paragraphs-container .para-card').length <= 1) {
+            showToast('At least 1 paragraph required.', 'warning');
+            return;
+        }
+        $(this).closest('.para-card').remove();
+        reindexParaCards();
+        markScriptDirty();
+    });
+
     function loadKoScript() {
         $.getJSON('/pipeline/api/' + RUN_ID + '/script/ko', function(data) {
             koLoaded = true;
@@ -234,30 +298,7 @@ $(document).ready(function() {
             var totalChars = 0;
             (data.paragraphs || []).forEach(function(p, i) {
                 totalChars += (p.text || '').length;
-                var moodBadge = p.mood ? '<span class="badge bg-' + getMoodColor(p.mood) + ' bg-opacity-10 text-' + getMoodColor(p.mood) + '">' + p.mood + '</span>' : '';
-                $container.append(
-                    '<div class="card mb-2 para-card" data-id="' + p.id + '">' +
-                    '  <div class="card-body p-2">' +
-                    '    <div class="d-flex justify-content-between align-items-center mb-1">' +
-                    '      <span class="fw-semibold small text-muted">P' + (i + 1) + '</span>' +
-                    '      ' + moodBadge +
-                    '    </div>' +
-                    '    <textarea class="form-control form-control-sm para-text mb-1" rows="3" ' +
-                    '              style="font-size: 0.88rem; line-height: 1.6;">' + (p.text || '') + '</textarea>' +
-                    '    <div class="d-flex gap-2">' +
-                    '      <div class="flex-grow-1">' +
-                    '        <input class="form-control form-control-sm para-scene" placeholder="Scene direction..." ' +
-                    '               value="' + (p.scene_direction || '').replace(/"/g, '&quot;') + '" ' +
-                    '               style="font-size: 0.8rem; color: #6c757d;">' +
-                    '      </div>' +
-                    '      <div style="width: 120px;">' +
-                    '        <input class="form-control form-control-sm para-mood" placeholder="Mood..." ' +
-                    '               value="' + (p.mood || '').replace(/"/g, '&quot;') + '" style="font-size: 0.8rem;">' +
-                    '      </div>' +
-                    '    </div>' +
-                    '  </div>' +
-                    '</div>'
-                );
+                $container.append(buildParaCard(p, i));
             });
             $('#script-char-count').text('· ' + totalChars + ' chars · ' + (data.paragraphs || []).length + ' paragraphs');
             $('#btn-save-script').prop('disabled', false);
@@ -268,31 +309,35 @@ $(document).ready(function() {
 
     // Track KO changes
     $(document).on('input', '.para-text, .para-scene, .para-mood', function() {
-        $('#btn-save-script').removeClass('btn-primary').addClass('btn-warning').html('<i class="bi bi-save me-1"></i>Save *');
+        markScriptDirty();
+        reindexParaCards();
     });
 
     // Save KO script
     $('#btn-save-script').on('click', function() {
         var $btn = $(this).prop('disabled', true);
         var paragraphs = [];
-        var fullText = [];
-        $('.para-card').each(function() {
+        $('#script-paragraphs-container .para-card').each(function() {
             var text = $(this).find('.para-text').val();
-            fullText.push(text);
-            paragraphs.push({
-                id: $(this).data('id'),
+            var dataId = $(this).data('id');
+            var entry = {
                 text: text,
                 scene_direction: $(this).find('.para-scene').val(),
                 mood: $(this).find('.para-mood').val()
-            });
+            };
+            if (dataId) entry.id = dataId;
+            paragraphs.push(entry);
         });
         $.ajax({
             url: '/pipeline/api/' + RUN_ID + '/script/ko',
             method: 'PUT',
-            data: JSON.stringify({ full_text: fullText.join('\n\n'), paragraphs: paragraphs }),
-            success: function() {
+            contentType: 'application/json',
+            data: JSON.stringify({ paragraphs: paragraphs }),
+            success: function(resp) {
                 showToast('Script saved!', 'success');
                 $btn.prop('disabled', false).removeClass('btn-warning').addClass('btn-primary').html('<i class="bi bi-check-lg me-1"></i>Save');
+                // Reload to get new IDs for added paragraphs
+                loadKoScript();
             },
             error: function() { showToast('Failed to save.', 'danger'); $btn.prop('disabled', false); }
         });
@@ -300,6 +345,82 @@ $(document).ready(function() {
 
     // ─── EN Script (structured paragraphs + per-paragraph TTS + Images) ───
     var enSceneImages = {};
+
+    // ─── Script Refine (LLM) ───
+    var lastRefineResult = null;
+
+    function sendRefine(instruction) {
+        if (!instruction) return;
+        var $btn = $('#btn-refine-send').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+        $('#refine-result').addClass('d-none');
+        $.ajax({
+            url: '/pipeline/api/' + RUN_ID + '/script/refine',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ instruction: instruction }),
+            success: function(resp) {
+                lastRefineResult = resp.paragraphs || [];
+                var $container = $('#refine-paragraphs').empty();
+                lastRefineResult.forEach(function(p, i) {
+                    var moodBadge = p.mood ? '<span class="badge bg-' + getMoodColor(p.mood) + ' bg-opacity-10 text-' + getMoodColor(p.mood) + ' ms-2">' + p.mood + '</span>' : '';
+                    $container.append(
+                        '<div class="mb-2 small">' +
+                        '  <div class="d-flex align-items-center"><strong class="text-muted">P' + (i + 1) + '</strong>' + moodBadge + '</div>' +
+                        '  <div style="white-space:pre-wrap;line-height:1.6;">' + (p.narration || '') + '</div>' +
+                        '  <div class="text-muted" style="font-size:0.75rem;">' + (p.scene || '') + '</div>' +
+                        '</div>'
+                    );
+                });
+                $('#refine-result').removeClass('d-none');
+                showToast('AI 개선안 생성 완료', 'success');
+            },
+            error: function(xhr) {
+                var msg = (xhr.responseJSON || {}).error || 'Refine failed';
+                showToast(msg, 'danger');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="bi bi-send"></i>');
+            }
+        });
+    }
+
+    // Preset buttons
+    $(document).on('click', '.refine-preset', function() {
+        var prompt = $(this).data('prompt');
+        $('#refine-input').val(prompt);
+        sendRefine(prompt);
+    });
+
+    // Send button
+    $('#btn-refine-send').on('click', function() {
+        sendRefine($('#refine-input').val().trim());
+    });
+
+    // Enter key in input
+    $('#refine-input').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendRefine($(this).val().trim());
+        }
+    });
+
+    // Apply refined script to editor
+    $('#btn-refine-apply').on('click', function() {
+        if (!lastRefineResult || !lastRefineResult.length) return;
+        var $container = $('#script-paragraphs-container').empty();
+        lastRefineResult.forEach(function(p, i) {
+            $container.append(buildParaCard({
+                id: '',
+                text: p.narration || '',
+                scene_direction: p.scene || '',
+                mood: p.mood || ''
+            }, i));
+        });
+        reindexParaCards();
+        markScriptDirty();
+        $('#refine-result').addClass('d-none');
+        showToast('개선안이 적용되었습니다. Save를 눌러 저장하세요.', 'info');
+    });
 
     function loadEnScript() {
         $.getJSON('/pipeline/api/' + RUN_ID + '/images', function(imgData) {

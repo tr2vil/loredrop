@@ -49,7 +49,7 @@ class ScriptParagraph(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (
-        db.UniqueConstraint('script_id', 'paragraph_index', name='uq_script_paragraph'),
+        db.Index('ix_script_paragraph_order', 'script_id', 'paragraph_index'),
     )
 
     def to_dict(self):

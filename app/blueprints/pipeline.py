@@ -157,29 +157,49 @@ def update_script(run_id, lang='ko'):
 
     data = request.get_json()
 
-    # Update paragraph-level data if provided
     if 'paragraphs' in data:
-        for p_data in data['paragraphs']:
-            para = ScriptParagraph.query.get(p_data.get('id'))
-            if para and para.script_id == script.id:
-                if 'text' in p_data:
-                    para.text = p_data['text']
-                if 'scene_direction' in p_data:
-                    para.scene_direction = p_data['scene_direction']
-                if 'mood' in p_data:
-                    para.mood = p_data['mood']
+        incoming = data['paragraphs']
+        if not incoming:
+            return jsonify({'error': 'At least 1 paragraph required'}), 400
+        incoming_ids = {p_data['id'] for p_data in incoming if p_data.get('id')}
 
-    # Update full_text (rebuild from paragraphs or use provided)
-    if 'full_text' in data:
+        # Delete paragraphs not in the incoming list
+        existing = ScriptParagraph.query.filter_by(script_id=script.id).all()
+        for para in existing:
+            if para.id not in incoming_ids:
+                db.session.delete(para)
+
+        # Update existing / create new paragraphs
+        for i, p_data in enumerate(incoming):
+            if p_data.get('id'):
+                para = ScriptParagraph.query.get(p_data['id'])
+                if para and para.script_id == script.id:
+                    para.text = p_data.get('text', para.text)
+                    para.scene_direction = p_data.get('scene_direction', para.scene_direction)
+                    para.mood = p_data.get('mood', para.mood)
+                    para.paragraph_index = i
+            else:
+                para = ScriptParagraph(
+                    script_id=script.id,
+                    paragraph_index=i,
+                    text=p_data.get('text', ''),
+                    scene_direction=p_data.get('scene_direction', ''),
+                    mood=p_data.get('mood', ''),
+                )
+                db.session.add(para)
+
+        # Rebuild full_text from paragraph order
+        full_text = '\n\n'.join(p_data.get('text', '') for p_data in incoming)
+        script.full_text = full_text
+        script.word_count = len(full_text)
+
+    elif 'full_text' in data:
         script.full_text = data['full_text']
         script.word_count = len(data['full_text'])
-
-        # If no paragraph-level data, re-split
-        if 'paragraphs' not in data:
-            ScriptParagraph.query.filter_by(script_id=script.id).delete()
-            for i, text in enumerate(_split_paragraphs(data['full_text'])):
-                para = ScriptParagraph(script_id=script.id, paragraph_index=i, text=text)
-                db.session.add(para)
+        ScriptParagraph.query.filter_by(script_id=script.id).delete()
+        for i, text in enumerate(_split_paragraphs(data['full_text'])):
+            para = ScriptParagraph(script_id=script.id, paragraph_index=i, text=text)
+            db.session.add(para)
 
     db.session.commit()
     return jsonify({'ok': True, 'script': script.to_dict()})
@@ -192,6 +212,61 @@ def _split_paragraphs(text):
         if block:
             paragraphs.append(block)
     return paragraphs if paragraphs else [text.strip()]
+
+
+# ─── Script Refine API (LLM) ───
+
+@pipeline_bp.route('/api/<int:run_id>/script/refine', methods=['POST'])
+def refine_script(run_id):
+    """Refine the KO script using Claude API with user instruction."""
+    run = PipelineRun.query.get_or_404(run_id)
+    script = Script.query.filter_by(
+        selected_topic_id=run.selected_topic_id, language='ko'
+    ).order_by(Script.created_at.desc()).first()
+    if not script:
+        return jsonify({'error': 'No KO script found'}), 404
+
+    data = request.get_json()
+    instruction = (data.get('instruction') or '').strip()
+    if not instruction:
+        return jsonify({'error': 'instruction is required'}), 400
+
+    paragraphs = script.paragraphs.order_by(ScriptParagraph.paragraph_index).all()
+    script_json = []
+    for p in paragraphs:
+        script_json.append({
+            'narration': p.text,
+            'scene': p.scene_direction or '',
+            'mood': p.mood or '',
+        })
+
+    import json
+    from ..services.ai.claude_client import generate
+
+    system_prompt = (
+        '당신은 "LoreDrop" 바이럴 유튜브 쇼츠 채널의 대본 편집자입니다.\n'
+        '사용자가 현재 한국어 대본(JSON)과 수정 지시사항을 제공하면, 지시에 따라 대본을 개선하세요.\n\n'
+        '규칙:\n'
+        '- 동일한 JSON 구조 유지: {"paragraphs": [{narration, scene, mood}]}\n'
+        '- 모든 필드는 반드시 한국어로 작성\n'
+        '- 필요에 따라 문단을 추가, 삭제, 병합, 재작성 가능\n'
+        '- 쇼츠 기준 총 약 600-700자 유지\n'
+        '- JSON만 출력할 것. 설명이나 코드블록 없이'
+    )
+
+    user_prompt = (
+        f'현재 대본:\n{json.dumps({"paragraphs": script_json}, ensure_ascii=False, indent=2)}\n\n'
+        f'수정 지시:\n{instruction}\n\n'
+        'JSON만 출력:'
+    )
+
+    try:
+        response_text = generate(system_prompt, user_prompt)
+        from ..services.content.script_service import _parse_structured_response
+        result = _parse_structured_response(response_text)
+        return jsonify({'ok': True, 'paragraphs': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # ─── Per-paragraph TTS API ───
